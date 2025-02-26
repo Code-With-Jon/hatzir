@@ -79,3 +79,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 Your Name - [@yourtwitter](https://twitter.com/yourtwitter)
 Project Link: [https://github.com/yourusername/community-watch-app](https://github.com/yourusername/community-watch-app)# hatzir
+
+
+Google Auth Reference Links:
+https://console.cloud.google.com/auth/clients/372676417589-j9ij7rfalkcbg8u05bfda2mqg473i5sk.apps.googleusercontent.com?project=hatzir
+https://console.firebase.google.com/project/hatzir-38b6e/overview
