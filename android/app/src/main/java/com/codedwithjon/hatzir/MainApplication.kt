@@ -1,4 +1,4 @@
-package com.hatzir
+package com.codedwithjon.hatzir
 
 import android.app.Application
 import android.content.res.Configuration

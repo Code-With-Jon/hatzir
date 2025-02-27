@@ -12,65 +12,65 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchIncidents } from '../../redux/slices/incidentsSlice';
-
-const IncidentCard = ({ incident, onPress }) => {
-  const date = new Date(incident.createdAt).toLocaleDateString();
-  
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
-      {incident.mediaUrls?.length > 0 && (
-        <Image
-          source={{ uri: incident.mediaUrls[0].url }}
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-      )}
-      
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{incident.title}</Text>
-        <Text style={styles.cardDescription} numberOfLines={2}>
-          {incident.description}
-        </Text>
-        
-        <View style={styles.cardFooter}>
-          <Text style={styles.cardDate}>{date}</Text>
-          <View style={styles.cardStats}>
-            <View style={styles.statItem}>
-              <Ionicons name="arrow-up" size={16} color="#4CAF50" />
-              <Text style={styles.statText}>{incident.votes}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="flag" size={16} color="#F44336" />
-              <Text style={styles.statText}>{incident.flags}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import IncidentCard from '../../components/IncidentCard';
+import * as Location from 'expo-location';
 
 const IncidentFeedScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
-  const [sortBy, setSortBy] = useState('date'); // 'date' or 'votes'
+  const [sortBy, setSortBy] = useState('date'); // 'date', 'votes', or 'distance'
+  const [userLocation, setUserLocation] = useState(null);
   const dispatch = useDispatch();
   const { incidents, isLoading } = useSelector(state => state.incidents);
 
   useEffect(() => {
-    loadIncidents();
+    const getUserLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Permission to access location was denied');
+          return;
+        }
+        
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      } catch (error) {
+        console.error('Error getting location:', error);
+      }
+    };
+    
+    getUserLocation();
   }, []);
 
-  const loadIncidents = async () => {
-    try {
-      await dispatch(fetchIncidents()).unwrap();
-    } catch (error) {
-      console.error('Error loading incidents:', error);
-    }
-  };
+  useEffect(() => {
+    const incidentsRef = collection(db, 'incidents');
+    const q = query(
+      incidentsRef,
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedIncidents = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        votes: doc.data().votes || 0,
+        commentCount: doc.data().commentCount || 0,
+        flagCount: doc.data().flagCount || 0,
+      }));
+      console.log('Fetched incidents with counts:', fetchedIncidents);
+      dispatch(fetchIncidents(fetchedIncidents));
+    });
+
+    return () => unsubscribe();
+  }, [dispatch]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadIncidents();
+    await dispatch(fetchIncidents());
     setRefreshing(false);
   };
 
@@ -82,11 +82,42 @@ const IncidentFeedScreen = ({ navigation }) => {
     navigation.navigate('ReportIncident');
   };
 
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in km
+    return distance;
+  };
+
   const sortedIncidents = [...incidents].sort((a, b) => {
     if (sortBy === 'date') {
       return new Date(b.createdAt) - new Date(a.createdAt);
     }
-    return b.votes - a.votes;
+    if (sortBy === 'votes') {
+      return b.votes - a.votes;
+    }
+    if (sortBy === 'distance' && userLocation) {
+      const distanceA = calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        a.location.latitude,
+        a.location.longitude
+      );
+      const distanceB = calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        b.location.latitude,
+        b.location.longitude
+      );
+      return distanceA - distanceB;
+    }
+    return 0;
   });
 
   const renderHeader = () => (
@@ -109,6 +140,14 @@ const IncidentFeedScreen = ({ navigation }) => {
             Most Voted
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sortButton, sortBy === 'distance' && styles.sortButtonActive]}
+          onPress={() => setSortBy('distance')}
+        >
+          <Text style={[styles.sortButtonText, sortBy === 'distance' && styles.sortButtonTextActive]}>
+            Nearest
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -121,16 +160,19 @@ const IncidentFeedScreen = ({ navigation }) => {
     );
   }
 
+  const renderItem = ({ item }) => (
+    <IncidentCard
+      incident={item}
+      onPress={() => handleIncidentPress(item)}
+      userLocation={userLocation}
+    />
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
         data={sortedIncidents}
-        renderItem={({ item }) => (
-          <IncidentCard
-            incident={item}
-            onPress={() => handleIncidentPress(item)}
-          />
-        )}
+        renderItem={renderItem}
         keyExtractor={item => item.id}
         ListHeaderComponent={renderHeader}
         refreshControl={
@@ -194,56 +236,6 @@ const styles = StyleSheet.create({
   },
   sortButtonTextActive: {
     color: '#fff',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  cardImage: {
-    width: '100%',
-    height: 200,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardDate: {
-    fontSize: 12,
-    color: '#999',
-  },
-  cardStats: {
-    flexDirection: 'row',
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 16,
-  },
-  statText: {
-    marginLeft: 4,
-    color: '#666',
   },
   fab: {
     position: 'absolute',

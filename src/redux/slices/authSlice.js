@@ -5,7 +5,12 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithCredential,
-  OAuthProvider
+  OAuthProvider,
+  updateProfile,
+  updateEmail,
+  updatePassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import * as WebBrowser from 'expo-web-browser';
@@ -102,6 +107,52 @@ export const appleLogin = createAsyncThunk(
   }
 );
 
+export const updateUserProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async ({ displayName }, { rejectWithValue }) => {
+    try {
+      await updateProfile(auth.currentUser, { displayName });
+      return { displayName };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const updateUserEmail = createAsyncThunk(
+  'auth/updateEmail',
+  async ({ newEmail, password }, { rejectWithValue }) => {
+    try {
+      const credential = EmailAuthProvider.credential(
+        auth.currentUser.email,
+        password
+      );
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updateEmail(auth.currentUser, newEmail);
+      return { email: newEmail };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const updateUserPassword = createAsyncThunk(
+  'auth/updatePassword',
+  async ({ currentPassword, newPassword }, { rejectWithValue }) => {
+    try {
+      const credential = EmailAuthProvider.credential(
+        auth.currentUser.email,
+        currentPassword
+      );
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updatePassword(auth.currentUser, newPassword);
+      return null;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const initialState = {
   user: null,
   loading: false,
@@ -177,6 +228,12 @@ const authSlice = createSlice({
       .addCase(appleLogin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.user = { ...state.user, ...action.payload };
+      })
+      .addCase(updateUserEmail.fulfilled, (state, action) => {
+        state.user = { ...state.user, ...action.payload };
       });
   },
 });

@@ -7,7 +7,8 @@ import {
   ScrollView,
   Switch,
   Alert,
-  Image
+  Image,
+  SafeAreaView
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +45,7 @@ const ProfileScreen = ({ navigation }) => {
   const [locationEnabled, setLocationEnabled] = useState(false);
   
   const dispatch = useDispatch();
-  const user = useSelector(state => state.auth.user);
+  const { user } = useSelector(state => state.auth);
   const { token: notificationToken } = useSelector(state => state.notifications);
 
   useEffect(() => {
@@ -67,165 +68,155 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Confirm Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await dispatch(logoutUser()).unwrap();
-            } catch (error) {
-              Alert.alert('Error', 'Could not logout. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    try {
+      await dispatch(logoutUser()).unwrap();
+    } catch (error) {
+      Alert.alert('Logout Error', error.message);
+    }
   };
 
+  const menuItems = [
+    {
+      icon: 'settings-outline',
+      title: 'Settings',
+      onPress: () => navigation.navigate('Settings'),
+    },
+    {
+      icon: 'notifications-outline',
+      title: 'Notifications',
+      onPress: () => navigation.navigate('Notifications'),
+    },
+    {
+      icon: 'information-circle-outline',
+      title: 'About',
+      onPress: () => navigation.navigate('About'),
+    },
+    {
+      icon: 'shield-outline',
+      title: 'Privacy Policy',
+      onPress: () => navigation.navigate('PrivacyPolicy'),
+    },
+    {
+      icon: 'log-out-outline',
+      title: 'Logout',
+      onPress: handleLogout,
+    },
+  ];
+
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <Image
-            source={{ uri: 'https://ui-avatars.com/api/?name=' + user.email }}
-            style={styles.avatar}
-          />
-          <Text style={styles.email}>{user.email}</Text>
+        <Text style={styles.headerTitle}>Profile</Text>
+      </View>
+
+      <ScrollView style={styles.content}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user?.email?.[0]?.toUpperCase() || 'U'}
+            </Text>
+          </View>
+          <Text style={styles.email}>{user?.email}</Text>
+          <Text style={styles.displayName}>{user?.displayName}</Text>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <Text style={styles.editButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <SettingItem
-          icon="notifications"
-          title="Push Notifications"
-          value={notificationsEnabled}
-          onPress={handleNotificationToggle}
-          isSwitch
-        />
-        <SettingItem
-          icon="location"
-          title="Location Services"
-          value={locationEnabled}
-          onPress={setLocationEnabled}
-          isSwitch
-        />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
-        <SettingItem
-          icon="person"
-          title="Edit Profile"
-          onPress={() => {}}
-        />
-        <SettingItem
-          icon="notifications"
-          title="Notifications"
-          onPress={() => navigation.navigate('Notifications')}
-        />
-        <SettingItem
-          icon="shield"
-          title="Privacy Policy"
-          onPress={() => {}}
-        />
-        <SettingItem
-          icon="information-circle"
-          title="About"
-          onPress={() => {}}
-        />
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={styles.menu}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuItem}
+              onPress={item.onPress}
+            >
+              <Ionicons name={item.icon} size={24} color="#333" />
+              <Text style={styles.menuItemText}>{item.title}</Text>
+              <Ionicons name="chevron-forward" size={24} color="#ccc" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#fff',
-    padding: 20,
-    alignItems: 'center',
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  avatarContainer: {
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  content: {
+    flex: 1,
+  },
+  userInfo: {
     alignItems: 'center',
+    padding: 20,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 10,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#e91e63',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarText: {
+    fontSize: 32,
+    color: '#fff',
+    fontWeight: 'bold',
   },
   email: {
     fontSize: 16,
     color: '#333',
-    marginTop: 8,
   },
-  section: {
-    backgroundColor: '#fff',
-    marginTop: 20,
-    paddingVertical: 10,
-    borderTopWidth: 1,
+  menu: {
+    paddingHorizontal: 16,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderColor: '#eee',
+    borderBottomColor: '#eee',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 20,
-    marginBottom: 10,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  settingTitle: {
+  menuItemText: {
+    flex: 1,
+    marginLeft: 16,
     fontSize: 16,
     color: '#333',
-    marginLeft: 15,
   },
-  settingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  displayName: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '600',
+    marginTop: 4,
   },
-  settingValue: {
-    fontSize: 16,
-    color: '#666',
-    marginRight: 10,
+  editButton: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
   },
-  logoutButton: {
-    margin: 20,
-    padding: 15,
-    backgroundColor: '#F44336',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  editButtonText: {
+    color: '#e91e63',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

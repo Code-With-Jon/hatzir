@@ -18,6 +18,11 @@ import ReportIncidentScreen from '../screens/Reports/ReportIncidentScreen';
 import IncidentFeedScreen from '../screens/Reports/IncidentFeedScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import NotificationsScreen from '../screens/Profile/NotificationsScreen';
+import AboutScreen from '../screens/Profile/AboutScreen';
+import PrivacyPolicyScreen from '../screens/Profile/PrivacyPolicyScreen';
+import EditProfileScreen from '../screens/Profile/EditProfileScreen';
+import NotificationButton from '../screens/Map/NotificationButton';
+import SettingsScreen from '../screens/Profile/SettingsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -104,6 +109,30 @@ const RootNavigator = () => {
               name="Notifications" 
               component={NotificationsScreen} 
               options={{ headerShown: true, title: 'Notifications' }}
+            />
+            <Stack.Screen 
+              name="About" 
+              component={AboutScreen} 
+              options={{ headerShown: true, title: 'About' }}
+            />
+            <Stack.Screen 
+              name="PrivacyPolicy" 
+              component={PrivacyPolicyScreen} 
+              options={{ headerShown: true, title: 'Privacy Policy' }}
+            />
+            <Stack.Screen 
+              name="EditProfile" 
+              component={EditProfileScreen} 
+              options={{ headerShown: true, title: 'Edit Profile' }}
+            />
+            <Stack.Screen 
+              name="Settings" 
+              component={SettingsScreen}
+              options={{
+                headerShown: true,
+                title: 'Settings',
+                headerShadowVisible: false,
+              }} 
             />
           </>
         )}

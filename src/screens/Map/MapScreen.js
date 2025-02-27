@@ -155,6 +155,8 @@ const MapScreen = ({ navigation }) => {
     android: 'google', // Use Google Maps on Android
   });
 
+  const hasUnread = false; // Replace with actual logic to determine if there are unread notifications
+
   return (
     <View style={styles.container}>
       <MapView
@@ -202,6 +204,17 @@ const MapScreen = ({ navigation }) => {
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Incident Map</Text>
+        <TouchableOpacity
+          style={styles.headerNotification}
+          onPress={() => navigation.navigate('Notifications')}
+        >
+          <Ionicons 
+            name={hasUnread ? "notifications" : "notifications-outline"} 
+            size={24} 
+            color="#333" 
+          />
+          {hasUnread && <View style={styles.notificationBadge} />}
+        </TouchableOpacity>
       </View>
       
       <TouchableOpacity
@@ -232,22 +245,38 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    top: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  headerNotification: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 8,
+    borderRadius: 20,
+    position: 'absolute',
+    right: 20,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    backgroundColor: '#e91e63',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   locationButton: {
     position: 'absolute',
