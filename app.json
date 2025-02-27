@@ -44,9 +44,8 @@
           "autoVerify": true,
           "data": [
             {
-              "scheme": "hatzir",
-              "host": "*.hatzir.app",
-              "pathPrefix": "/"
+              "scheme": "com.carpedm.hatzir",
+              "host": "oauth2redirect"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
@@ -59,7 +58,14 @@
     "plugins": [
       "expo-location",
       "expo-image-picker",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/notification.wav"]
+        }
+      ],
       [
         "expo-apple-authentication",
         {
@@ -68,13 +74,20 @@
       ]
     ],
     "originalFullName": "@carpedm/hatzir",
-    "scheme": "hatzir",
+    "scheme": "com.carpedm.hatzir",
     "owner": "carpedm",
     "extra": {
       "eas": {
         "projectId": "your-project-id"
       }
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#ffffff",
+      "iosDisplayInForeground": true,
+      "androidMode": "default",
+      "androidCollapsedTitle": "New Notification"
+    }
   }
 }

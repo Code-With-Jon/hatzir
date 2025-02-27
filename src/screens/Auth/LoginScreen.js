@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser, googleLogin, appleLogin } from '../../redux/slices/authSlice';
+import { loginUser, googleLogin, appleLogin, registerForPushNotifications } from '../../redux/slices/authSlice';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
@@ -33,11 +33,10 @@ const LoginScreen = ({ navigation }) => {
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: '372676417589-j9ij7rfalkcbg8u05bfda2mqg473i5sk.apps.googleusercontent.com',
     iosClientId: '372676417589-1ugh97dvbq2vsfj77cugfsovuv5di2jq.apps.googleusercontent.com',
-    expoClientId: '372676417589-3ki1ittf5jhblbbk5l136hjbu3lir03q.apps.googleusercontent.com',
     webClientId: '372676417589-3ki1ittf5jhblbbk5l136hjbu3lir03q.apps.googleusercontent.com',
     responseType: "id_token",
     redirectUri: makeRedirectUri({
-      scheme: 'hatzir'
+      native: 'com.carpedm.hatzir:/oauth2redirect'
     }),
   });
 
@@ -47,24 +46,37 @@ const LoginScreen = ({ navigation }) => {
     }
   }, [error]);
 
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      handleGoogleSignIn(id_token);
+    }
+  }, [response]);
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
     try {
-      await dispatch(loginUser({ email, password })).unwrap();
+      const userCredential = await dispatch(loginUser({ email, password })).unwrap();
+      if (userCredential) {
+        dispatch(registerForPushNotifications(userCredential.user.uid));
+      }
     } catch (error) {
       // Error is handled by the useEffect above
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
+    promptAsync();
+  };
+
+  const handleGoogleSignIn = async (idToken) => {
     try {
-      const result = await promptAsync();
-      if (result.type === 'success') {
-        const { id_token } = result.params;
-        await dispatch(googleLogin(id_token)).unwrap();
+      const userCredential = await dispatch(googleLogin(idToken)).unwrap();
+      if (userCredential) {
+        dispatch(registerForPushNotifications(userCredential.user.uid));
       }
     } catch (error) {
       Alert.alert('Google Login Error', error.message);
@@ -80,7 +92,10 @@ const LoginScreen = ({ navigation }) => {
         ],
       });
       
-      await dispatch(appleLogin(credential)).unwrap();
+      const userCredential = await dispatch(appleLogin(credential)).unwrap();
+      if (userCredential) {
+        dispatch(registerForPushNotifications(userCredential.user.uid));
+      }
     } catch (error) {
       if (error.code === 'ERR_CANCELED') {
         return;
@@ -117,7 +132,11 @@ const LoginScreen = ({ navigation }) => {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
                 autoComplete="email"
+                textContentType="emailAddress"
+                enablesReturnKeyAutomatically={true}
+                returnKeyType="next"
               />
             </View>
 
@@ -129,7 +148,12 @@ const LoginScreen = ({ navigation }) => {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
                 autoComplete="password"
+                textContentType="password"
+                enablesReturnKeyAutomatically={true}
+                returnKeyType="done"
               />
               <TouchableOpacity
                 style={styles.passwordToggle}
@@ -213,10 +237,12 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+    width: '100%',
   },
   content: {
     flex: 1,
     padding: 20,
+    width: '100%',
   },
   headerContainer: {
     marginTop: 20,
@@ -246,6 +272,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 16,
     height: 56,
+    width: '100%',
+    minHeight: 56,
   },
   inputIcon: {
     marginRight: 12,
@@ -254,6 +282,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+    width: '100%',
+    padding: 0,
   },
   passwordToggle: {
     padding: 8,

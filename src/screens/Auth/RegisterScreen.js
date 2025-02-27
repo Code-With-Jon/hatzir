@@ -1,34 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  TextInput, 
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
   TouchableOpacity,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  ActivityIndicator,
   Alert,
-  ActivityIndicator
+  ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { registerUser } from '../../redux/slices/authSlice';
 
 const RegisterScreen = ({ navigation }) => {
+  const nameRef = React.useRef(null);
+  const emailRef = React.useRef(null);
+  const passwordRef = React.useRef(null);
+  const confirmPasswordRef = React.useRef(null);
+  
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector(state => state.auth);
-  
+  const { loading, error } = useSelector(state => state.auth);
+
   useEffect(() => {
     if (error) {
       Alert.alert('Registration Error', error);
     }
   }, [error]);
-  
+
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
+  const handleNameSubmit = () => {
+    emailRef.current?.focus();
+  };
+
+  const handleEmailSubmit = () => {
+    passwordRef.current?.focus();
+  };
+
+  const handlePasswordSubmit = () => {
+    confirmPasswordRef.current?.focus();
+  };
+
   const handleRegister = async () => {
     if (!email || !password || !confirmPassword || !name) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -52,73 +77,125 @@ const RegisterScreen = ({ navigation }) => {
       Alert.alert('Registration Error', error);
     }
   };
-  
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : null}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollView}>
+        <View style={styles.content}>
           <View style={styles.headerContainer}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Sign up to start reporting incidents</Text>
           </View>
-          
+
           <View style={styles.formContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-            />
-            
-            <TouchableOpacity 
-              style={styles.registerButton}
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.registerButtonText}>Register</Text>
-              )}
-            </TouchableOpacity>
-            
-            <View style={styles.loginContainer}>
-              <Text style={styles.loginText}>Already have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.loginLink}>Login</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                ref={nameRef}
+                style={styles.input}
+                placeholder="Full Name"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+                returnKeyType="next"
+                onSubmitEditing={handleNameSubmit}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                ref={emailRef}
+                style={styles.input}
+                placeholder="Email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="next"
+                onSubmitEditing={handleEmailSubmit}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                ref={passwordRef}
+                style={styles.input}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                returnKeyType="next"
+                onSubmitEditing={handlePasswordSubmit}
+              />
+              <TouchableOpacity
+                style={styles.passwordToggle}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color="#666"
+                />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                ref={confirmPasswordRef}
+                style={styles.input}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  handleRegister();
+                  dismissKeyboard();
+                }}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.registerButton}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.registerButtonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginLink}>Login</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -127,64 +204,101 @@ const RegisterScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafc',
+    backgroundColor: '#fff',
   },
   keyboardView: {
     flex: 1,
+    width: '100%',
   },
-  scrollView: {
-    flexGrow: 1,
-    paddingBottom: 30,
+  content: {
+    flex: 1,
+    padding: 20,
+    width: '100%',
   },
   headerContainer: {
-    alignItems: 'center',
-    marginTop: 50,
-    marginBottom: 30,
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  backButton: {
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 5,
+    marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
   },
   formContainer: {
-    paddingHorizontal: 30,
+    width: '100%',
+    alignItems: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    height: 56,
+    width: '100%',
+    minHeight: 56,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    flex: 1,
+    fontSize: 16,
+    color: '#333',
+    width: '100%',
+    padding: 0,
+  },
+  passwordToggle: {
+    padding: 8,
   },
   registerButton: {
     backgroundColor: '#e91e63',
-    borderRadius: 8,
-    padding: 15,
+    borderRadius: 12,
+    height: 56,
+    width: '100%',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
+    shadowColor: '#e91e63',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+    marginTop: 24,
   },
   registerButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: '600',
   },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    alignItems: 'center',
+    marginTop: 'auto',
+    paddingBottom: 20,
   },
   loginText: {
+    fontSize: 14,
     color: '#666',
   },
   loginLink: {
+    fontSize: 14,
     color: '#e91e63',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  buttonContainer: {
+    width: '100%',
+    alignItems: 'center',
   },
 });
 

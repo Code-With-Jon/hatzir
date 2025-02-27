@@ -1,121 +1,76 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { Ionicons } from '@expo/vector-icons';
-import { fetchUserNotifications } from '../../redux/slices/notificationsSlice';
-
-const NotificationItem = ({ notification, onPress }) => {
-  const getIcon = () => {
-    switch (notification.type) {
-      case 'incident':
-        return 'warning';
-      case 'update':
-        return 'information-circle';
-      case 'system':
-        return 'notifications';
-      default:
-        return 'alert-circle';
-    }
-  };
-
-  return (
-    <TouchableOpacity 
-      style={[
-        styles.notificationItem,
-        !notification.read && styles.unreadNotification
-      ]}
-      onPress={onPress}
-    >
-      <View style={styles.iconContainer}>
-        <Ionicons 
-          name={getIcon()} 
-          size={24} 
-          color={notification.read ? '#666' : '#e91e63'} 
-        />
-      </View>
-      <View style={styles.contentContainer}>
-        <Text style={styles.title}>{notification.title}</Text>
-        <Text style={styles.message} numberOfLines={2}>
-          {notification.message}
-        </Text>
-        <Text style={styles.time}>
-          {new Date(notification.createdAt).toLocaleDateString()}
-        </Text>
-      </View>
-      {!notification.read && <View style={styles.unreadDot} />}
-    </TouchableOpacity>
-  );
-};
+import { fetchNotifications } from '../../redux/slices/notificationsSlice';
 
 const NotificationsScreen = () => {
-  const [refreshing, setRefreshing] = useState(false);
   const dispatch = useDispatch();
-  const { notifications, isLoading } = useSelector(state => state.notifications);
-  const user = useSelector(state => state.auth.user);
+  const { notifications, loading, error } = useSelector(state => state.notifications);
+  const { user } = useSelector(state => state.auth);
 
   useEffect(() => {
     loadNotifications();
   }, []);
 
-  const loadNotifications = async () => {
-    try {
-      await dispatch(fetchUserNotifications(user.uid)).unwrap();
-    } catch (error) {
-      Alert.alert('Error', 'Could not load notifications');
+  const loadNotifications = () => {
+    if (user?.uid) {
+      dispatch(fetchNotifications(user.uid));
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadNotifications();
-    setRefreshing(false);
-  };
-
-  const handleNotificationPress = (notification) => {
-    // TODO: Implement notification action handling
-    console.log('Notification pressed:', notification);
-  };
-
-  if (isLoading && !refreshing) {
+  if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#e91e63" />
       </View>
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Error: {error}</Text>
+      </View>
+    );
+  }
+
+  if (!notifications.length) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.noDataText}>No notifications yet</Text>
+      </View>
+    );
+  }
+
+  const renderNotification = ({ item }) => (
+    <View style={styles.notificationItem}>
+      <Text style={styles.notificationTitle}>{item.title}</Text>
+      <Text style={styles.notificationBody}>{item.body}</Text>
+      <Text style={styles.notificationTime}>
+        {new Date(item.timestamp?.toDate()).toLocaleDateString()}
+      </Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <FlatList
         data={notifications}
-        renderItem={({ item }) => (
-          <NotificationItem
-            notification={item}
-            onPress={() => handleNotificationPress(item)}
-          />
-        )}
+        renderItem={renderNotification}
         keyExtractor={item => item.id}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
+            refreshing={loading}
+            onRefresh={loadNotifications}
             colors={['#e91e63']}
           />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off" size={48} color="#666" />
-            <Text style={styles.emptyText}>No notifications yet</Text>
-          </View>
         }
       />
     </View>
@@ -125,68 +80,41 @@ const NotificationsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
   },
-  loadingContainer: {
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
   notificationItem: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 15,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    alignItems: 'center',
   },
-  unreadNotification: {
-    backgroundColor: '#fafafa',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  title: {
+  notificationTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#333',
     marginBottom: 4,
   },
-  message: {
+  notificationBody: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  time: {
+  notificationTime: {
     fontSize: 12,
     color: '#999',
   },
-  unreadDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#e91e63',
-    marginLeft: 10,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
+  errorText: {
+    color: '#e91e63',
     fontSize: 16,
+  },
+  noDataText: {
     color: '#666',
-    marginTop: 10,
+    fontSize: 16,
   },
 });
 

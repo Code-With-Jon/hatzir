@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
-import { initializeFirestore, getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
@@ -28,10 +28,7 @@ export const auth = initializeAuth(app, {
 });
 
 // Initialize Firestore with settings for React Native
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false
-});
+export const db = getFirestore(app);
 
 // Initialize Storage
 export const storage = getStorage(app);
