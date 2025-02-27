@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -19,7 +19,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "host.exp.exponent",
+      "bundleIdentifier": "com.carpedm.hatzir",
       "config": {
         "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_KEY"
       }
@@ -51,6 +51,7 @@
       "eas": {
         "projectId": "your-project-id"
       }
-    }
+    },
+    "newArchEnabled": true
   }
 }

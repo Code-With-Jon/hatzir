@@ -1,9 +1,10 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { initializeFirestore, getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -21,13 +22,16 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth
-export const auth = getAuth(app);
+// Replace any existing auth initialization with this:
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(AsyncStorage)
+});
 
 // Initialize Firestore with settings
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true, // This may help with connectivity issues
-  useFetchStreams: false,
+const db = initializeFirestore(app, {
+  cache: {
+    timeToLiveSeconds: 60 * 60 * 24 // 24 hours
+  }
 });
 
 // Enable offline persistence if not on web
