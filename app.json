@@ -22,7 +22,8 @@
       "bundleIdentifier": "com.carpedm.hatzir",
       "config": {
         "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_KEY"
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -42,7 +43,8 @@
     "plugins": [
       "expo-location",
       "expo-image-picker",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-apple-authentication"
     ],
     "originalFullName": "@carpedm/hatzir",
     "scheme": "hatzir",

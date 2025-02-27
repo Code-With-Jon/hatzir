@@ -4,7 +4,8 @@ import {
   signInWithEmailAndPassword, 
   signOut,
   GoogleAuthProvider,
-  signInWithCredential 
+  signInWithCredential,
+  OAuthProvider
 } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 
@@ -52,6 +53,36 @@ export const googleLogin = createAsyncThunk(
       const credential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(auth, credential);
       return { uid: userCredential.user.uid, email: userCredential.user.email };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const appleLogin = createAsyncThunk(
+  'auth/appleLogin',
+  async (credential, { rejectWithValue }) => {
+    try {
+      // Create an OAuth provider for Apple
+      const provider = new OAuthProvider('apple.com');
+      
+      // Create a credential with the token
+      const oauthCredential = provider.credential({
+        idToken: credential.identityToken,
+        rawNonce: credential.nonce,
+      });
+
+      // Sign in with Firebase
+      const userCredential = await signInWithCredential(auth, oauthCredential);
+      
+      // Return user data
+      return {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        name: credential.fullName?.givenName 
+          ? `${credential.fullName.givenName} ${credential.fullName.familyName}`
+          : userCredential.user.displayName,
+      };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -119,6 +150,18 @@ const authSlice = createSlice({
         state.user = action.payload;
       })
       .addCase(googleLogin.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(appleLogin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(appleLogin.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+      })
+      .addCase(appleLogin.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
