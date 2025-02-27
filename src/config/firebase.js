@@ -22,30 +22,16 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Replace any existing auth initialization with this:
-const auth = initializeAuth(app, {
+// Initialize Auth with persistence
+export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage)
 });
 
-// Initialize Firestore with settings
-const db = initializeFirestore(app, {
-  cache: {
-    timeToLiveSeconds: 60 * 60 * 24 // 24 hours
-  }
+// Initialize Firestore with settings for React Native
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  useFetchStreams: false
 });
-
-// Enable offline persistence if not on web
-if (Platform.OS !== 'web') {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled in one tab at a time.
-      console.log('Persistence failed: Multiple tabs open');
-    } else if (err.code === 'unimplemented') {
-      // The current browser doesn't support persistence
-      console.log('Persistence not supported');
-    }
-  });
-}
 
 // Initialize Storage
 export const storage = getStorage(app);

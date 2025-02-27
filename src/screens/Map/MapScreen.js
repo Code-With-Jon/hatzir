@@ -8,12 +8,14 @@ import {
   Platform,
   Alert
 } from 'react-native';
-import MapView, { Marker, Callout } from 'react-native-maps';
+import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchIncidents } from '../../redux/slices/incidentsSlice';
 import { FAB } from 'react-native-elements';
+import { collection, query, getDocs, onSnapshot } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,22 +49,56 @@ const getTimeElapsed = (date) => {
 };
 
 const MapScreen = ({ navigation }) => {
+  const [incidents, setIncidents] = useState([]);
   const [region, setRegion] = useState({
-    latitude: 40.7128,
-    longitude: -74.0060,
+    latitude: 31.7683,  // Default to Israel center
+    longitude: 35.2137,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   const dispatch = useDispatch();
-  const { incidents, isLoading } = useSelector(state => state.incidents);
+  const { isLoading } = useSelector(state => state.incidents);
   
+  // Add this new state to force map updates
+  const [mapReady, setMapReady] = useState(false);
+
+  // Add this function to handle map ready event
+  const onMapReady = () => {
+    setMapReady(true);
+  };
+
+  // Add this effect to force map to update when markers change
   useEffect(() => {
-    dispatch(fetchIncidents());
+    if (mapReady && mapRef.current) {
+      // Force map to update by slightly moving the region
+      mapRef.current.animateToRegion({
+        ...region,
+        latitude: region.latitude + 0.000001
+      }, 1);
+    }
+  }, [incidents, mapReady]);
+
+  useEffect(() => {
+    // Set up real-time listener for incidents
+    const incidentsRef = collection(db, 'incidents');
+    const unsubscribe = onSnapshot(incidentsRef, (snapshot) => {
+      const incidentsList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setIncidents(incidentsList);
+    }, (error) => {
+      console.error("Error fetching incidents:", error);
+    });
+
     getLocationPermission();
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
-  
+
   const getLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -124,13 +160,16 @@ const MapScreen = ({ navigation }) => {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={mapProvider}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={region}
         onRegionChangeComplete={setRegion}
         showsUserLocation
         showsMyLocationButton={false}
+        onMapReady={onMapReady}
+        maxZoomLevel={20}
+        minZoomLevel={0}
       >
-        {incidents.map(incident => (
+        {mapReady && incidents.map(incident => (
           <Marker
             key={incident.id}
             coordinate={{
@@ -138,6 +177,7 @@ const MapScreen = ({ navigation }) => {
               longitude: incident.location.longitude
             }}
             pinColor="#e91e63"
+            tracksViewChanges={false}
           >
             <Callout
               tooltip

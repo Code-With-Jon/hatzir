@@ -6,8 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
 
 // Auth Screens
+import LandingScreen from '../screens/Auth/LandingScreen';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
+import SocialVerificationScreen from '../screens/Auth/SocialVerificationScreen';
 
 // Main App Screens
 import MapScreen from '../screens/Map/MapScreen';
@@ -23,33 +25,10 @@ const Tab = createBottomTabNavigator();
 // Auth Navigator
 const AuthNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="Landing" component={LandingScreen} />
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
-  </Stack.Navigator>
-);
-
-// Map Stack Navigator
-const MapStackNavigator = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="Map" component={MapScreen} options={{ headerShown: false }} />
-    <Stack.Screen name="IncidentDetails" component={IncidentDetailsScreen} options={{ title: 'Incident Details' }} />
-  </Stack.Navigator>
-);
-
-// Reports Stack Navigator
-const ReportsStackNavigator = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="IncidentFeed" component={IncidentFeedScreen} options={{ title: 'Incidents' }} />
-    <Stack.Screen name="ReportIncident" component={ReportIncidentScreen} options={{ title: 'Report Incident' }} />
-    <Stack.Screen name="IncidentDetails" component={IncidentDetailsScreen} options={{ title: 'Incident Details' }} />
-  </Stack.Navigator>
-);
-
-// Profile Stack Navigator
-const ProfileStackNavigator = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
-    <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
+    <Stack.Screen name="SocialVerification" component={SocialVerificationScreen} />
   </Stack.Navigator>
 );
 
@@ -59,37 +38,40 @@ const MainTabNavigator = () => (
     screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color, size }) => {
         let iconName;
-
         if (route.name === 'MapTab') {
           iconName = focused ? 'map' : 'map-outline';
         } else if (route.name === 'ReportsTab') {
-          iconName = focused ? 'list' : 'list-outline';
+          iconName = focused ? 'document-text' : 'document-text-outline';
         } else if (route.name === 'ProfileTab') {
           iconName = focused ? 'person' : 'person-outline';
         }
-
         return <Ionicons name={iconName} size={size} color={color} />;
       },
+      tabBarActiveTintColor: '#e91e63',
+      tabBarInactiveTintColor: 'gray',
     })}
-    tabBarOptions={{
-      activeTintColor: '#e91e63',
-      inactiveTintColor: 'gray',
-    }}
   >
     <Tab.Screen 
       name="MapTab" 
-      component={MapStackNavigator} 
-      options={{ title: 'Map', headerShown: false }}
+      component={MapScreen} 
+      options={{ 
+        headerShown: false,
+        title: 'Map'
+      }} 
     />
     <Tab.Screen 
       name="ReportsTab" 
-      component={ReportsStackNavigator} 
-      options={{ title: 'Reports', headerShown: false }}
+      component={IncidentFeedScreen} 
+      options={{ 
+        title: 'Reports'
+      }} 
     />
     <Tab.Screen 
       name="ProfileTab" 
-      component={ProfileStackNavigator} 
-      options={{ title: 'Profile', headerShown: false }}
+      component={ProfileScreen} 
+      options={{ 
+        title: 'Profile'
+      }} 
     />
   </Tab.Navigator>
 );
@@ -100,7 +82,32 @@ const RootNavigator = () => {
   
   return (
     <NavigationContainer>
-      {user ? <MainTabNavigator /> : <AuthNavigator />}
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!user ? (
+          // Auth Stack
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : (
+          // App Stack
+          <>
+            <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+            <Stack.Screen 
+              name="IncidentDetails" 
+              component={IncidentDetailsScreen} 
+              options={{ headerShown: true, title: 'Incident Details' }}
+            />
+            <Stack.Screen 
+              name="ReportIncident" 
+              component={ReportIncidentScreen} 
+              options={{ headerShown: true, title: 'Report Incident' }}
+            />
+            <Stack.Screen 
+              name="Notifications" 
+              component={NotificationsScreen} 
+              options={{ headerShown: true, title: 'Notifications' }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };

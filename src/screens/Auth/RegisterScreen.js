@@ -29,7 +29,7 @@ const RegisterScreen = ({ navigation }) => {
     }
   }, [error]);
   
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!email || !password || !confirmPassword || !name) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -45,7 +45,12 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
     
-    dispatch(registerUser({ email, password }));
+    try {
+      const userCredentials = await dispatch(registerUser({ email, password })).unwrap();
+      navigation.navigate('SocialVerification', { userCredentials });
+    } catch (error) {
+      Alert.alert('Registration Error', error);
+    }
   };
   
   return (
