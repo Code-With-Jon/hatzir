@@ -61,9 +61,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#ffffff",
-          "sounds": ["./assets/notification.wav"]
+          "color": "#ffffff"
         }
       ],
       [
@@ -83,7 +81,6 @@
     },
     "newArchEnabled": true,
     "notification": {
-      "icon": "./assets/notification-icon.png",
       "color": "#ffffff",
       "iosDisplayInForeground": true,
       "androidMode": "default",

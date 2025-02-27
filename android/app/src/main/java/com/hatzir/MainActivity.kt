@@ -1,4 +1,4 @@
-package com.codedwithjon.hatzir
+package com.hatzir
 
 import android.os.Build
 import android.os.Bundle
