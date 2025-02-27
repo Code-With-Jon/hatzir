@@ -23,7 +23,8 @@
       "config": {
         "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_KEY"
       },
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -35,7 +36,22 @@
         "googleMaps": {
           "apiKey": "YOUR_ANDROID_GOOGLE_MAPS_KEY"
         }
-      }
+      },
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "hatzir",
+              "host": "*.hatzir.app",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -44,7 +60,12 @@
       "expo-location",
       "expo-image-picker",
       "expo-notifications",
-      "expo-apple-authentication"
+      [
+        "expo-apple-authentication",
+        {
+          "mode": "development"
+        }
+      ]
     ],
     "originalFullName": "@carpedm/hatzir",
     "scheme": "hatzir",

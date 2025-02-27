@@ -8,6 +8,11 @@ import {
   OAuthProvider
 } from 'firebase/auth';
 import { auth } from '../../config/firebase';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+// Make sure to call this at app startup
+WebBrowser.maybeCompleteAuthSession();
 
 // Async thunks for authentication
 export const registerUser = createAsyncThunk(
@@ -50,9 +55,17 @@ export const googleLogin = createAsyncThunk(
   'auth/googleLogin',
   async (idToken, { rejectWithValue }) => {
     try {
+      // Create a credential with the token
       const credential = GoogleAuthProvider.credential(idToken);
+      
+      // Sign in with Firebase
       const userCredential = await signInWithCredential(auth, credential);
-      return { uid: userCredential.user.uid, email: userCredential.user.email };
+      
+      return {
+        uid: userCredential.user.uid,
+        email: userCredential.user.email,
+        displayName: userCredential.user.displayName
+      };
     } catch (error) {
       return rejectWithValue(error.message);
     }

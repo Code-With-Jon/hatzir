@@ -16,8 +16,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, googleLogin, appleLogin } from '../../redux/slices/authSlice';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 
 const { width } = Dimensions.get('window');
+
+WebBrowser.maybeCompleteAuthSession();
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -25,6 +30,16 @@ const LoginScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const { loading, error } = useSelector(state => state.auth);
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: '372676417589-j9ij7rfalkcbg8u05bfda2mqg473i5sk.apps.googleusercontent.com',
+    iosClientId: '372676417589-1ugh97dvbq2vsfj77cugfsovuv5di2jq.apps.googleusercontent.com',
+    expoClientId: '372676417589-3ki1ittf5jhblbbk5l136hjbu3lir03q.apps.googleusercontent.com',
+    webClientId: '372676417589-3ki1ittf5jhblbbk5l136hjbu3lir03q.apps.googleusercontent.com',
+    responseType: "id_token",
+    redirectUri: makeRedirectUri({
+      scheme: 'hatzir'
+    }),
+  });
 
   useEffect(() => {
     if (error) {
@@ -46,9 +61,13 @@ const LoginScreen = ({ navigation }) => {
 
   const handleGoogleLogin = async () => {
     try {
-      await dispatch(googleLogin()).unwrap();
+      const result = await promptAsync();
+      if (result.type === 'success') {
+        const { id_token } = result.params;
+        await dispatch(googleLogin(id_token)).unwrap();
+      }
     } catch (error) {
-      Alert.alert('Google Login Error', error);
+      Alert.alert('Google Login Error', error.message);
     }
   };
 
