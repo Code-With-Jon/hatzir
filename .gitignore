@@ -115,3 +115,10 @@ coverage/
 # Logs
 logs
 *.log
+
+# Credentials
+credentials/Apple/*.p12
+credentials/Apple/*.mobileprovision
+credentials.json
+credentials/
+
