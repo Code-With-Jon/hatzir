@@ -209,10 +209,10 @@ const MapScreen = ({ navigation }) => {
         ))}
       </MapView>
       
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Incident Map</Text>
         <TouchableOpacity
-          style={styles.headerNotification}
+          style={[styles.headerNotification, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}
           onPress={() => navigation.navigate('Notifications')}
         >
           <Ionicons 
@@ -220,7 +220,7 @@ const MapScreen = ({ navigation }) => {
             size={24} 
             color={theme.text} 
           />
-          {hasUnread && <View style={styles.notificationBadge} />}
+          {hasUnread && <View style={[styles.notificationBadge, { backgroundColor: theme.primary }]} />}
         </TouchableOpacity>
       </View>
       
@@ -259,22 +259,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginHorizontal: 20,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
   },
   headerNotification: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     padding: 8,
     borderRadius: 20,
     position: 'absolute',
-    right: 20,
+    right: 0,
   },
   notificationBadge: {
     position: 'absolute',

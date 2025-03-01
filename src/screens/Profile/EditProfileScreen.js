@@ -13,10 +13,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateUserProfile, updateUserEmail, updateUserPassword } from '../../redux/slices/authSlice';
+import { useTheme } from '../../context/ThemeContext';
+import { lightTheme, darkTheme } from '../../theme/colors';
 
 const EditProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { user, loading } = useSelector(state => state.auth);
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -75,31 +79,22 @@ const EditProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-      </View>
-
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView style={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Information</Text>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Profile Information</Text>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="Display Name"
+              placeholderTextColor={theme.textSecondary}
               value={displayName}
               onChangeText={setDisplayName}
               autoCapitalize="words"
             />
           </View>
           <TouchableOpacity
-            style={styles.updateButton}
+            style={[styles.updateButton, { backgroundColor: theme.primary }]}
             onPress={handleUpdateProfile}
             disabled={loading}
           >
@@ -112,38 +107,40 @@ const EditProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Email</Text>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Email</Text>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="Email"
+              placeholderTextColor={theme.textSecondary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
           </View>
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="Current Password"
+              placeholderTextColor={theme.textSecondary}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity
-              style={styles.passwordToggle}
+              style={[styles.passwordToggle, { backgroundColor: theme.inputBackground }]}
               onPress={() => setShowPassword(!showPassword)}
             >
               <Ionicons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={20}
-                color="#666"
+                color={theme.textSecondary}
               />
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            style={styles.updateButton}
+            style={[styles.updateButton, { backgroundColor: theme.primary }]}
             onPress={handleUpdateEmail}
             disabled={loading}
           >
@@ -156,36 +153,39 @@ const EditProfileScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Change Password</Text>
-          <View style={styles.inputContainer}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Change Password</Text>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="Current Password"
+              placeholderTextColor={theme.textSecondary}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               secureTextEntry={!showPassword}
             />
           </View>
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="New Password"
+              placeholderTextColor={theme.textSecondary}
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry={!showPassword}
             />
           </View>
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: theme.text }]}
               placeholder="Confirm New Password"
+              placeholderTextColor={theme.textSecondary}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showPassword}
             />
           </View>
           <TouchableOpacity
-            style={styles.updateButton}
+            style={[styles.updateButton, { backgroundColor: theme.primary }]}
             onPress={handleUpdatePassword}
             disabled={loading}
           >
@@ -204,22 +204,6 @@ const EditProfileScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
   },
   content: {
     flex: 1,
@@ -231,13 +215,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 16,
@@ -246,18 +228,16 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
   },
   passwordToggle: {
     padding: 8,
   },
   updateButton: {
-    backgroundColor: '#e91e63',
     borderRadius: 12,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#e91e63',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

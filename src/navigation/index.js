@@ -154,6 +154,7 @@ const RootNavigator = () => {
           cardStyle: {
             backgroundColor: theme.background,
           },
+          headerBackTitle: ' ',
         }}
       >
         {!user ? (
@@ -176,7 +177,11 @@ const RootNavigator = () => {
             <Stack.Screen 
               name="Notifications" 
               component={NotificationsScreen} 
-              options={{ headerShown: true, title: 'Notifications' }}
+              options={{ 
+                headerShown: true, 
+                title: 'Notifications',
+                headerBackTitle: ' ',
+              }} 
             />
             <Stack.Screen 
               name="About" 
@@ -191,7 +196,11 @@ const RootNavigator = () => {
             <Stack.Screen 
               name="EditProfile" 
               component={EditProfileScreen} 
-              options={{ headerShown: true, title: 'Edit Profile' }}
+              options={{ 
+                headerShown: true, 
+                title: 'Edit Profile',
+                headerBackTitle: ' ',
+              }} 
             />
             <Stack.Screen 
               name="Settings" 
