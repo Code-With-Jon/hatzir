@@ -150,28 +150,19 @@ const incidentsSlice = createSlice({
     clearIncidentsError: (state) => {
       state.error = null;
     },
+    setIncidents: (state, action) => {
+      state.incidents = action.payload;
+      state.isLoading = false;
+    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchIncidents.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchIncidents.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.incidents = action.payload;
-      })
-      .addCase(fetchIncidents.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
       .addCase(addIncident.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(addIncident.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.incidents.unshift(action.payload);
       })
       .addCase(addIncident.rejected, (state, action) => {
         state.isLoading = false;
@@ -192,5 +183,5 @@ const incidentsSlice = createSlice({
   },
 });
 
-export const { clearIncidentsError } = incidentsSlice.actions;
+export const { clearIncidentsError, setIncidents } = incidentsSlice.actions;
 export default incidentsSlice.reducer; 

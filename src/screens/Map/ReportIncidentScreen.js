@@ -35,9 +35,9 @@ const handleSubmit = async () => {
       location: {
         latitude: location.latitude,
         longitude: location.longitude,
-        ...locationDetails,
       },
-      createdAt: new Date(),
+      locationDetails,
+      createdAt: new Date().toISOString(),
       reportedBy: user.uid,
       isAnonymous,
       mediaUrls: uploadedMediaUrls,

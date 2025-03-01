@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchIncidents } from '../../redux/slices/incidentsSlice';
+import { setIncidents } from '../../redux/slices/incidentsSlice';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import IncidentCard from '../../components/IncidentCard';
 import * as Location from 'expo-location';
+import { useTheme } from '../../context/ThemeContext';
+import { lightTheme, darkTheme } from '../../theme/colors';
 
 const IncidentFeedScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -23,6 +25,8 @@ const IncidentFeedScreen = ({ navigation }) => {
   const [userLocation, setUserLocation] = useState(null);
   const dispatch = useDispatch();
   const { incidents, isLoading } = useSelector(state => state.incidents);
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
     const getUserLocation = async () => {
@@ -61,17 +65,18 @@ const IncidentFeedScreen = ({ navigation }) => {
         commentCount: doc.data().commentCount || 0,
         flagCount: doc.data().flagCount || 0,
       }));
-      console.log('Fetched incidents with counts:', fetchedIncidents);
-      dispatch(fetchIncidents(fetchedIncidents));
+      
+      dispatch(setIncidents(fetchedIncidents));
     });
 
     return () => unsubscribe();
   }, [dispatch]);
 
-  const onRefresh = async () => {
+  const onRefresh = () => {
     setRefreshing(true);
-    await dispatch(fetchIncidents());
-    setRefreshing(false);
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
   const handleIncidentPress = (incident) => {
@@ -169,7 +174,7 @@ const IncidentFeedScreen = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
         data={sortedIncidents}
         renderItem={renderItem}
@@ -179,14 +184,14 @@ const IncidentFeedScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#e91e63']}
+            colors={[theme.primary]}
           />
         }
         contentContainerStyle={styles.listContent}
       />
       
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: theme.primary }]}
         onPress={handleAddReport}
       >
         <Ionicons name="add" size={24} color="#fff" />
