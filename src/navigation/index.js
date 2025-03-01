@@ -4,6 +4,10 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
+import { Platform } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
+import { lightTheme, darkTheme } from '../theme/colors';
+import { DefaultTheme } from '@react-navigation/native';
 
 // Auth Screens
 import LandingScreen from '../screens/Auth/LandingScreen';
@@ -38,56 +42,120 @@ const AuthNavigator = () => (
 );
 
 // Main Tab Navigator
-const MainTabNavigator = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      tabBarIcon: ({ focused, color, size }) => {
-        let iconName;
-        if (route.name === 'MapTab') {
-          iconName = focused ? 'map' : 'map-outline';
-        } else if (route.name === 'ReportsTab') {
-          iconName = focused ? 'document-text' : 'document-text-outline';
-        } else if (route.name === 'ProfileTab') {
-          iconName = focused ? 'person' : 'person-outline';
-        }
-        return <Ionicons name={iconName} size={size} color={color} />;
-      },
-      tabBarActiveTintColor: '#e91e63',
-      tabBarInactiveTintColor: 'gray',
-    })}
-  >
-    <Tab.Screen 
-      name="MapTab" 
-      component={MapScreen} 
-      options={{ 
-        headerShown: false,
-        title: 'Map'
-      }} 
-    />
-    <Tab.Screen 
-      name="ReportsTab" 
-      component={IncidentFeedScreen} 
-      options={{ 
-        title: 'Reports'
-      }} 
-    />
-    <Tab.Screen 
-      name="ProfileTab" 
-      component={ProfileScreen} 
-      options={{ 
-        title: 'Profile'
-      }} 
-    />
-  </Tab.Navigator>
-);
+const MainTabNavigator = () => {
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarStyle: {
+          backgroundColor: theme.tabBar,
+          borderTopColor: theme.border,
+          borderTopWidth: 1,
+        },
+        headerStyle: {
+          backgroundColor: theme.background,
+          borderBottomColor: theme.border,
+          borderBottomWidth: 1,
+        },
+        headerTintColor: theme.text,
+      }}
+    >
+      <Tab.Screen 
+        name="MapTab" 
+        component={MapScreen} 
+        options={{ 
+          headerShown: false,
+          title: 'Map',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={24} color={color} />
+          ),
+        }} 
+      />
+      <Tab.Screen 
+        name="ReportsTab" 
+        component={IncidentFeedScreen} 
+        options={{ 
+          title: 'Reports',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={24} color={color} />
+          ),
+        }} 
+      />
+      <Tab.Screen 
+        name="ProfileTab" 
+        component={ProfileScreen} 
+        options={{ 
+          title: 'Profile',
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+          ),
+        }} 
+      />
+    </Tab.Navigator>
+  );
+};
 
 // Root Navigator
 const RootNavigator = () => {
   const user = useSelector(state => state.auth.user);
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
+  
+  // Create a complete navigation theme with all required properties
+  const navigationTheme = {
+    dark: isDarkMode,
+    colors: {
+      primary: theme.primary,
+      background: theme.background,
+      card: theme.surface,
+      text: theme.text,
+      border: theme.border,
+      notification: theme.primary,
+    },
+    // Add missing typography properties
+    fonts: {
+      regular: {
+        fontFamily: 'System',
+        fontWeight: '400',
+      },
+      medium: {
+        fontFamily: 'System',
+        fontWeight: '500',
+      },
+      light: {
+        fontFamily: 'System',
+        fontWeight: '300',
+      },
+      thin: {
+        fontFamily: 'System',
+        fontWeight: '100',
+      },
+    },
+  };
   
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <NavigationContainer theme={navigationTheme}>
+      <Stack.Navigator 
+        screenOptions={{ 
+          headerShown: false,
+          headerStyle: {
+            backgroundColor: theme.background,
+            borderBottomColor: theme.border,
+            borderBottomWidth: 1,
+          },
+          headerTintColor: theme.text,
+          headerTitleStyle: {
+            color: theme.text,
+          },
+          cardStyle: {
+            backgroundColor: theme.background,
+          },
+        }}
+      >
         {!user ? (
           // Auth Stack
           <Stack.Screen name="Auth" component={AuthNavigator} />

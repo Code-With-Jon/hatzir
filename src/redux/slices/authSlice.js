@@ -15,6 +15,8 @@ import {
 import { auth } from '../../config/firebase';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 
 // Make sure to call this at app startup
 WebBrowser.maybeCompleteAuthSession();
@@ -81,27 +83,59 @@ export const appleLogin = createAsyncThunk(
   'auth/appleLogin',
   async (credential, { rejectWithValue }) => {
     try {
-      // Create an OAuth provider for Apple
-      const provider = new OAuthProvider('apple.com');
+      console.log('Starting Apple login with credential:', credential);
       
-      // Create a credential with the token
+      const provider = new OAuthProvider('apple.com');
       const oauthCredential = provider.credential({
         idToken: credential.identityToken,
         rawNonce: credential.nonce,
       });
 
-      // Sign in with Firebase
       const userCredential = await signInWithCredential(auth, oauthCredential);
       
+      // Check if we got a name from Apple (first-time sign-in)
+      let displayName = null;
+      if (credential.fullName?.givenName) {
+        displayName = `${credential.fullName.givenName} ${credential.fullName.familyName || ''}`.trim();
+        try {
+          // Store the name in Firestore
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            displayName,
+            email: userCredential.user.email,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          
+          // Update Firebase Auth profile
+          await updateProfile(auth.currentUser, { displayName });
+        } catch (firestoreError) {
+          console.log('Failed to save user data to Firestore:', firestoreError);
+          // Continue with the login process even if Firestore update fails
+        }
+      } else {
+        try {
+          // Try to get the name from Firestore
+          const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+          if (userDoc.exists()) {
+            displayName = userDoc.data().displayName;
+          }
+        } catch (firestoreError) {
+          console.log('Failed to fetch user data from Firestore:', firestoreError);
+          // Use Firebase Auth display name as fallback
+          displayName = userCredential.user.displayName;
+        }
+      }
+
       // Return user data
-      return {
+      const userData = {
         uid: userCredential.user.uid,
         email: userCredential.user.email,
-        name: credential.fullName?.givenName 
-          ? `${credential.fullName.givenName} ${credential.fullName.familyName}`
-          : userCredential.user.displayName,
+        name: displayName || userCredential.user.displayName,
       };
+      
+      console.log('Returning user data:', userData);
+      return userData;
     } catch (error) {
+      console.error('Apple login error:', error);
       return rejectWithValue(error.message);
     }
   }
@@ -147,6 +181,20 @@ export const updateUserPassword = createAsyncThunk(
       await reauthenticateWithCredential(auth.currentUser, credential);
       await updatePassword(auth.currentUser, newPassword);
       return null;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const registerForPushNotifications = createAsyncThunk(
+  'auth/registerPushNotifications',
+  async (userId, { rejectWithValue }) => {
+    try {
+      // Your push notification registration logic here
+      // This might include getting the token from Expo notifications
+      // and saving it to your backend/Firebase
+      return userId;
     } catch (error) {
       return rejectWithValue(error.message);
     }

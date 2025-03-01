@@ -1,3 +1,5 @@
+import { auth } from '../../config/firebase';
+
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -17,6 +19,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, googleLogin, appleLogin, registerForPushNotifications } from '../../redux/slices/authSlice';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { useTheme } from '../../context/ThemeContext';
+import { lightTheme, darkTheme } from '../../theme/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +31,8 @@ const LoginScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const { loading, error } = useSelector(state => state.auth);
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
     if (error) {
@@ -39,9 +46,9 @@ const LoginScreen = ({ navigation }) => {
 
   const configureGoogleSignIn = () => {
     GoogleSignin.configure({
-      webClientId: '861494268063-h7p3r4tnqqdcgqe2ma6e0dfv7pilu7v0.apps.googleusercontent.com', // your web client id
-      iosClientId: '372676417589-1ugh97dvbq2vsfj77cugfsovuv5di2jq.apps.googleusercontent.com', // your iOS client id
-      androidClientId: '372676417589-j9ij7rfalkcbg8u05bfda2mqg473i5sk.apps.googleusercontent.com', // your Android client id
+      webClientId: '861494268063-h7p3r4tnqqdcgqe2ma6e0dfv7pilu7v0.apps.googleusercontent.com',
+      iosClientId: '372676417589-1ugh97dvbq2vsfj77cugfsovuv5di2jq.apps.googleusercontent.com',
+      offlineAccess: true,
     });
   };
 
@@ -52,8 +59,8 @@ const LoginScreen = ({ navigation }) => {
     }
     try {
       const userCredential = await dispatch(loginUser({ email, password })).unwrap();
-      if (userCredential) {
-        dispatch(registerForPushNotifications(userCredential.user.uid));
+      if (userCredential?.uid) {
+        dispatch(registerForPushNotifications(userCredential.uid));
       }
     } catch (error) {
       // Error is handled by the useEffect above
@@ -67,15 +74,15 @@ const LoginScreen = ({ navigation }) => {
       const { idToken } = userInfo;
       
       const userCredential = await dispatch(googleLogin(idToken)).unwrap();
-      if (userCredential) {
-        dispatch(registerForPushNotifications(userCredential.user.uid));
+      if (userCredential?.uid) {
+        dispatch(registerForPushNotifications(userCredential.uid));
+      } else {
+        console.log('Google login successful but no uid available for push notifications');
       }
     } catch (error) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // User cancelled the login flow
         console.log('User cancelled the login flow');
       } else if (error.code === statusCodes.IN_PROGRESS) {
-        // Operation is in progress already
         console.log('Operation in progress');
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         Alert.alert('Error', 'Play services not available');
@@ -95,41 +102,72 @@ const LoginScreen = ({ navigation }) => {
       });
       
       const userCredential = await dispatch(appleLogin(credential)).unwrap();
-      if (userCredential) {
-        dispatch(registerForPushNotifications(userCredential.user.uid));
+      if (userCredential?.uid) {
+        try {
+          await dispatch(registerForPushNotifications(userCredential.uid));
+        } catch (pushError) {
+          console.log('Failed to register push notifications:', pushError);
+          // Continue with login even if push registration fails
+        }
+      } else {
+        console.log('Apple login successful but no uid available for push notifications');
       }
     } catch (error) {
       if (error.code === 'ERR_CANCELED') {
         return;
       }
-      Alert.alert('Apple Login Error', error.message);
+      console.error('Apple Login Error:', error);
+      Alert.alert('Apple Login Error', error.message || 'Failed to login with Apple');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address');
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert(
+        'Password Reset Email Sent',
+        'Check your email for instructions to reset your password'
+      );
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to send password reset email'
+      );
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: theme.background }]}>
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color="#333" />
+              <Ionicons name="arrow-back" size={24} color={theme.icon} />
             </TouchableOpacity>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Login to your account</Text>
+            <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              Login to your account
+            </Text>
           </View>
 
           <View style={styles.formContainer}>
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+              <Ionicons name="mail-outline" size={20} color={theme.icon} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text }]}
                 placeholder="Email"
+                placeholderTextColor={theme.textSecondary}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -142,11 +180,12 @@ const LoginScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+            <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={theme.icon} style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: theme.text }]}
                 placeholder="Password"
+                placeholderTextColor={theme.textSecondary}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -164,13 +203,16 @@ const LoginScreen = ({ navigation }) => {
                 <Ionicons
                   name={showPassword ? "eye-off-outline" : "eye-outline"}
                   size={20}
-                  color="#666"
+                  color={theme.icon}
                 />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={handleForgotPassword}
+            >
+              <Text style={[styles.forgotPasswordText, { color: theme.textSecondary }]}>Forgot Password?</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -179,15 +221,15 @@ const LoginScreen = ({ navigation }) => {
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={theme.buttonText} />
               ) : (
-                <Text style={styles.loginButtonText}>Login</Text>
+                <Text style={[styles.loginButtonText, { color: theme.buttonText }]}>Login</Text>
               )}
             </TouchableOpacity>
 
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
-              <Text style={styles.dividerText}>OR</Text>
+              <Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text>
               <View style={styles.divider} />
             </View>
 
@@ -195,15 +237,15 @@ const LoginScreen = ({ navigation }) => {
               style={styles.googleButton}
               onPress={handleGoogleLogin}
             >
-              <Ionicons name="logo-google" size={20} color="#333" />
-              <Text style={styles.googleButtonText}>Continue with Google</Text>
+              <Ionicons name="logo-google" size={20} color={theme.icon} />
+              <Text style={[styles.googleButtonText, { color: theme.text }]}>Continue with Google</Text>
             </TouchableOpacity>
 
             {Platform.OS === 'ios' && (
               <>
                 <View style={styles.dividerContainer}>
                   <View style={styles.divider} />
-                  <Text style={styles.dividerText}>OR</Text>
+                  <Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text>
                   <View style={styles.divider} />
                 </View>
 
@@ -211,8 +253,8 @@ const LoginScreen = ({ navigation }) => {
                   style={styles.appleButton}
                   onPress={handleAppleLogin}
                 >
-                  <Ionicons name="logo-apple" size={20} color="#fff" />
-                  <Text style={styles.appleButtonText}>
+                  <Ionicons name="logo-apple" size={20} color={theme.buttonText} />
+                  <Text style={[styles.appleButtonText, { color: theme.buttonText }]}>
                     Continue with Apple
                   </Text>
                 </TouchableOpacity>
@@ -221,9 +263,9 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.registerContainer}>
-            <Text style={styles.registerText}>Don't have an account? </Text>
+            <Text style={[styles.registerText, { color: theme.textSecondary }]}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLink}>Sign Up</Text>
+              <Text style={[styles.registerLink, { color: theme.text }]}>Sign Up</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -235,7 +277,6 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   keyboardView: {
     flex: 1,

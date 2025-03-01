@@ -11,10 +11,14 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import { updateUserSettings } from '../../redux/slices/userSettingsSlice'; // You'll need to create this
+import { useTheme } from '../../context/ThemeContext';
+import { lightTheme, darkTheme } from '../../theme/colors';
 
 const SettingsScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const settings = useSelector(state => state.userSettings);
+  const { isDarkMode, toggleTheme } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
@@ -30,6 +34,9 @@ const SettingsScreen = ({ navigation }) => {
   }, [navigation]);
 
   const handleSettingChange = (setting, value) => {
+    if (setting === 'darkMode') {
+      toggleTheme();
+    }
     dispatch(updateUserSettings({ [setting]: value }));
   };
 
@@ -49,7 +56,7 @@ const SettingsScreen = ({ navigation }) => {
           title: 'Dark Mode',
           description: 'Enable dark mode throughout the app',
           type: 'switch',
-          value: settings.darkMode,
+          value: isDarkMode,
         },
       ],
     },

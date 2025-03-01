@@ -16,6 +16,9 @@ import { fetchIncidents } from '../../redux/slices/incidentsSlice';
 import { FAB } from 'react-native-elements';
 import { collection, query, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import { useTheme } from '../../context/ThemeContext';
+import { lightTheme, darkTheme } from '../../theme/colors';
+import { lightMapStyle, darkMapStyle } from '../../theme/mapStyles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -63,6 +66,9 @@ const MapScreen = ({ navigation }) => {
   
   // Add this new state to force map updates
   const [mapReady, setMapReady] = useState(false);
+
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   // Add this function to handle map ready event
   const onMapReady = () => {
@@ -158,10 +164,11 @@ const MapScreen = ({ navigation }) => {
   const hasUnread = false; // Replace with actual logic to determine if there are unread notifications
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <MapView
         ref={mapRef}
         style={styles.map}
+        customMapStyle={isDarkMode ? darkMapStyle : lightMapStyle}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={region}
         onRegionChangeComplete={setRegion}
@@ -187,15 +194,15 @@ const MapScreen = ({ navigation }) => {
             >
               <View style={styles.calloutContainer}>
                 <View style={styles.calloutHeader}>
-                  <Text style={styles.calloutTitle}>{incident.title}</Text>
-                  <Text style={styles.timeElapsed}>
+                  <Text style={[styles.calloutTitle, { color: theme.text }]}>{incident.title}</Text>
+                  <Text style={[styles.timeElapsed, { color: theme.text }]}>
                     {getTimeElapsed(incident.createdAt)}
                   </Text>
                 </View>
-                <Text style={styles.calloutDescription} numberOfLines={2}>
+                <Text style={[styles.calloutDescription, { color: theme.text }]} numberOfLines={2}>
                   {incident.description}
                 </Text>
-                <Text style={styles.calloutLink}>View Details</Text>
+                <Text style={[styles.calloutLink, { color: theme.text }]}>View Details</Text>
               </View>
             </Callout>
           </Marker>
@@ -203,7 +210,7 @@ const MapScreen = ({ navigation }) => {
       </MapView>
       
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Incident Map</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Incident Map</Text>
         <TouchableOpacity
           style={styles.headerNotification}
           onPress={() => navigation.navigate('Notifications')}
@@ -211,24 +218,24 @@ const MapScreen = ({ navigation }) => {
           <Ionicons 
             name={hasUnread ? "notifications" : "notifications-outline"} 
             size={24} 
-            color="#333" 
+            color={theme.text} 
           />
           {hasUnread && <View style={styles.notificationBadge} />}
         </TouchableOpacity>
       </View>
       
       <TouchableOpacity
-        style={styles.locationButton}
+        style={[styles.locationButton, { backgroundColor: theme.background }]}
         onPress={goToUserLocation}
       >
-        <Ionicons name="locate" size={24} color="#e91e63" />
+        <Ionicons name="locate" size={24} color={theme.text} />
       </TouchableOpacity>
       
       <FAB
         title="Report Incident"
-        icon={<Ionicons name="warning-outline" size={24} color="white" />}
-        color="#e91e63"
-        style={styles.fab}
+        icon={<Ionicons name="warning-outline" size={24} color={theme.text} />}
+        color={theme.primary}
+        style={[styles.fab, { backgroundColor: theme.primary }]}
         onPress={handleReportPress}
       />
     </View>

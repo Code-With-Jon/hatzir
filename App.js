@@ -7,6 +7,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './src/config/firebase';
 import { setUser } from './src/redux/slices/authSlice';
 import * as Notifications from 'expo-notifications';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -17,12 +18,11 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export default function App() {
+// Create a separate component for the auth listener
+const AuthListener = () => {
   useEffect(() => {
-    // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // User is signed in
         store.dispatch(
           setUser({
             uid: user.uid,
@@ -30,19 +30,35 @@ export default function App() {
           })
         );
       } else {
-        // User is signed out
         store.dispatch(setUser(null));
       }
     });
 
-    // Cleanup subscription
     return unsubscribe;
   }, []);
 
+  return null;
+};
+
+// Separate component for app content that uses theme
+const ThemedApp = () => {
+  const { isDarkMode } = useTheme();
+  
   return (
-    <Provider store={store}>
-      <StatusBar style="auto" />
+    <>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       <RootNavigator />
-    </Provider>
+    </>
+  );
+};
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <Provider store={store}>
+        <AuthListener />
+        <ThemedApp />
+      </Provider>
+    </ThemeProvider>
   );
 } 
