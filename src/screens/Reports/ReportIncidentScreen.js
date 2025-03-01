@@ -9,13 +9,18 @@ import {
   Switch,
   Alert,
   ActivityIndicator,
-  Image
+  Image,
+  Platform,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { Video } from 'expo-av';
 import { addIncident } from '../../redux/slices/incidentsSlice';
+import { useTheme } from '../../context/ThemeContext';
+import { lightTheme, darkTheme } from '../../theme/colors';
+import * as MediaLibrary from 'expo-media-library';
 
 const ReportIncidentScreen = ({ navigation }) => {
   const [title, setTitle] = useState('');
@@ -27,57 +32,107 @@ const ReportIncidentScreen = ({ navigation }) => {
 
   const dispatch = useDispatch();
   const user = useSelector(state => state.auth.user);
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
-    getLocationPermission();
+    (async () => {
+      if (Platform.OS !== 'web') {
+        const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+        const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
+        
+        if (mediaStatus !== 'granted' || cameraStatus !== 'granted') {
+          Alert.alert('Sorry, we need camera and media library permissions!');
+          return;
+        }
+
+        if (locationStatus !== 'granted') {
+          Alert.alert('Permission Denied', 'Location permission is required to report incidents.');
+          return;
+        }
+
+        const currentLocation = await Location.getCurrentPositionAsync({});
+        setLocation({
+          latitude: currentLocation.coords.latitude,
+          longitude: currentLocation.coords.longitude,
+        });
+      }
+    })();
   }, []);
 
-  const getLocationPermission = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to report incidents.');
-        return;
-      }
-
-      const currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation({
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude,
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Could not get your current location');
-    }
+  const showMediaPicker = () => {
+    Alert.alert(
+      'Add Media',
+      'Choose an option',
+      [
+        {
+          text: 'Take Photo',
+          onPress: () => pickMedia('camera', 'image'),
+        },
+        {
+          text: 'Take Video',
+          onPress: () => pickMedia('camera', 'video'),
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: () => pickMedia('library', 'all'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
-  const pickImage = async () => {
+  const pickMedia = async (source, mediaType) => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Camera roll permission is required to add media.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
+      let result;
+      const options = {
+        mediaTypes: mediaType === 'all' 
+          ? ['images', 'videos']
+          : mediaType === 'image' 
+            ? ['images']
+            : ['videos'],
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 1,
-        videoMaxDuration: 120,
-      });
+        quality: 0.8,
+        videoMaxDuration: 60,
+        base64: false,
+        exif: true,
+      };
+
+      if (source === 'camera') {
+        result = await ImagePicker.launchCameraAsync(options);
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+      }
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        const type = asset.type || (asset.uri.endsWith('.mp4') ? 'video' : 'image');
-        setMediaFiles([...mediaFiles, { 
+        console.log('Picked asset:', asset);
+
+        const newMedia = {
           uri: asset.uri,
-          type: type,
-          name: `${type}_${Date.now()}.${type === 'video' ? 'mp4' : 'jpg'}`
-        }]);
+          type: asset.type || (asset.uri.toLowerCase().endsWith('.mp4') ? 'video' : 'image'),
+          fileName: asset.uri.split('/').pop(),
+          duration: asset.duration,
+          width: asset.width,
+          height: asset.height,
+        };
+
+        setMediaFiles(prev => [...prev, newMedia]);
       }
     } catch (error) {
-      Alert.alert('Error', 'Could not select media');
+      console.error('Error picking media:', error);
+      Alert.alert('Error', 'Failed to pick media');
     }
+  };
+
+  const removeMedia = (index) => {
+    setMediaFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -97,8 +152,6 @@ const ReportIncidentScreen = ({ navigation }) => {
         userId: user?.uid || 'anonymous',
       })).unwrap();
 
-      console.log('Incident submitted successfully:', result);
-      
       Alert.alert(
         'Success',
         'Incident reported successfully',
@@ -112,60 +165,119 @@ const ReportIncidentScreen = ({ navigation }) => {
     }
   };
 
+  const renderMediaPreview = () => {
+    return (
+      <ScrollView horizontal style={styles.mediaPreviewContainer}>
+        {mediaFiles.map((media, index) => (
+          <View key={index} style={styles.mediaPreviewWrapper}>
+            {media.type === 'video' ? (
+              <View style={styles.mediaPreview}>
+                <Video
+                  source={{ uri: media.uri }}
+                  style={styles.mediaPreview}
+                  resizeMode="cover"
+                  shouldPlay={false}
+                  isMuted={true}
+                  useNativeControls={false}
+                  isLooping={false}
+                  posterSource={{ uri: media.uri }}
+                  usePoster={true}
+                  onLoad={() => console.log('Video loaded')}
+                  onError={(error) => console.error('Video error:', error)}
+                />
+                <View style={styles.videoOverlay}>
+                  <Ionicons name="play-circle" size={32} color="white" />
+                </View>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: media.uri }}
+                style={styles.mediaPreview}
+                resizeMode="cover"
+              />
+            )}
+            <TouchableOpacity
+              style={styles.removeMediaButton}
+              onPress={() => removeMedia(index)}
+            >
+              <View style={styles.removeButtonBackground}>
+                <Ionicons name="close-circle" size={28} color="white" />
+              </View>
+            </TouchableOpacity>
+            {media.type === 'video' && (
+              <View style={styles.videoIndicator}>
+                <Ionicons name="videocam" size={20} color="#fff" />
+                <Text style={styles.videoText}>Video</Text>
+              </View>
+            )}
+          </View>
+        ))}
+        {mediaFiles.length < 5 && (
+          <TouchableOpacity
+            style={[styles.addMediaButton, { backgroundColor: theme.inputBackground }]}
+            onPress={showMediaPicker}
+          >
+            <Ionicons name="add" size={40} color={theme.text} />
+            <Text style={[styles.addMediaText, { color: theme.text }]}>
+              Add Photo/Video
+            </Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    );
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: theme.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.form}>
-        <Text style={styles.label}>Title *</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Title *</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { 
+            backgroundColor: theme.inputBackground,
+            borderColor: theme.border,
+            color: theme.text
+          }]}
           value={title}
           onChangeText={setTitle}
           placeholder="Enter incident title"
+          placeholderTextColor={theme.textSecondary}
         />
 
-        <Text style={styles.label}>Description *</Text>
+        <Text style={[styles.label, { color: theme.text }]}>Description *</Text>
         <TextInput
-          style={[styles.input, styles.textArea]}
+          style={[styles.input, styles.textArea, { 
+            backgroundColor: theme.inputBackground,
+            borderColor: theme.border,
+            color: theme.text
+          }]}
           value={description}
           onChangeText={setDescription}
           placeholder="Describe what happened"
+          placeholderTextColor={theme.textSecondary}
           multiline
           numberOfLines={4}
         />
 
         <View style={styles.mediaSection}>
-          <Text style={styles.label}>Add Photos</Text>
-          <ScrollView horizontal style={styles.mediaPreview}>
-            {mediaFiles.map((file, index) => (
-              <View key={index} style={styles.mediaItem}>
-                <Image source={{ uri: file.uri }} style={styles.mediaImage} />
-                <TouchableOpacity
-                  style={styles.removeMedia}
-                  onPress={() => setMediaFiles(files => files.filter((_, i) => i !== index))}
-                >
-                  <Ionicons name="close-circle" size={24} color="#F44336" />
-                </TouchableOpacity>
-              </View>
-            ))}
-            <TouchableOpacity style={styles.addMediaButton} onPress={pickImage}>
-              <Ionicons name="camera" size={32} color="#666" />
-              <Text style={styles.addMediaText}>Add Photo</Text>
-            </TouchableOpacity>
-          </ScrollView>
+          <Text style={[styles.label, { color: theme.text }]}>Add Media</Text>
+          {renderMediaPreview()}
         </View>
 
         <View style={styles.switchContainer}>
-          <Text style={styles.label}>Report Anonymously</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Report Anonymously</Text>
           <Switch
             value={isAnonymous}
             onValueChange={setIsAnonymous}
-            trackColor={{ false: "#767577", true: "#81b0ff" }}
-            thumbColor={isAnonymous ? "#2196F3" : "#f4f3f4"}
+            trackColor={{ false: theme.border, true: theme.primary }}
+            thumbColor={isAnonymous ? theme.primary : theme.text}
           />
         </View>
 
         <TouchableOpacity
-          style={styles.submitButton}
+          style={[styles.submitButton, { backgroundColor: theme.primary }]}
           onPress={handleSubmit}
           disabled={isSubmitting}
         >
@@ -183,7 +295,6 @@ const ReportIncidentScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   form: {
     padding: 20,
@@ -191,16 +302,13 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 12,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#ddd',
   },
   textArea: {
     height: 100,
@@ -209,40 +317,61 @@ const styles = StyleSheet.create({
   mediaSection: {
     marginBottom: 20,
   },
-  mediaPreview: {
+  mediaPreviewContainer: {
     flexDirection: 'row',
-    marginTop: 10,
+    marginVertical: 10,
+    maxHeight: 140,
   },
-  mediaItem: {
-    marginRight: 10,
+  mediaPreviewWrapper: {
+    marginRight: 12,
     position: 'relative',
   },
-  mediaImage: {
-    width: 100,
-    height: 100,
+  mediaPreview: {
+    width: 120,
+    height: 120,
     borderRadius: 8,
+    backgroundColor: '#f0f0f0',
   },
-  removeMedia: {
+  removeMediaButton: {
     position: 'absolute',
     top: -10,
     right: -10,
-    backgroundColor: 'white',
+    zIndex: 1,
+  },
+  removeButtonBackground: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 14,
+    padding: 2,
+  },
+  videoIndicator: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 12,
+    padding: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  videoText: {
+    color: '#fff',
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '500',
   },
   addMediaButton: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#f5f5f5',
+    width: 120,
+    height: 120,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
     borderStyle: 'dashed',
   },
   addMediaText: {
-    marginTop: 5,
-    color: '#666',
+    marginTop: 8,
+    fontSize: 12,
+    textAlign: 'center',
   },
   switchContainer: {
     flexDirection: 'row',
@@ -251,7 +380,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   submitButton: {
-    backgroundColor: '#e91e63',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
@@ -261,6 +389,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 });
 
