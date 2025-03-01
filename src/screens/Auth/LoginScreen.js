@@ -16,13 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, googleLogin, appleLogin, registerForPushNotifications } from '../../redux/slices/authSlice';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 const { width } = Dimensions.get('window');
-
-WebBrowser.maybeCompleteAuthSession();
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -30,15 +26,6 @@ const LoginScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const { loading, error } = useSelector(state => state.auth);
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: '372676417589-j9ij7rfalkcbg8u05bfda2mqg473i5sk.apps.googleusercontent.com',
-    iosClientId: '372676417589-1ugh97dvbq2vsfj77cugfsovuv5di2jq.apps.googleusercontent.com',
-    webClientId: '372676417589-3ki1ittf5jhblbbk5l136hjbu3lir03q.apps.googleusercontent.com',
-    responseType: "id_token",
-    redirectUri: makeRedirectUri({
-      native: 'com.carpedm.hatzir:/oauth2redirect'
-    }),
-  });
 
   useEffect(() => {
     if (error) {
@@ -47,11 +34,16 @@ const LoginScreen = ({ navigation }) => {
   }, [error]);
 
   useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      handleGoogleSignIn(id_token);
-    }
-  }, [response]);
+    configureGoogleSignIn();
+  }, []);
+
+  const configureGoogleSignIn = () => {
+    GoogleSignin.configure({
+      webClientId: '861494268063-h7p3r4tnqqdcgqe2ma6e0dfv7pilu7v0.apps.googleusercontent.com', // your web client id
+      iosClientId: '372676417589-1ugh97dvbq2vsfj77cugfsovuv5di2jq.apps.googleusercontent.com', // your iOS client id
+      androidClientId: '372676417589-j9ij7rfalkcbg8u05bfda2mqg473i5sk.apps.googleusercontent.com', // your Android client id
+    });
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -68,18 +60,28 @@ const LoginScreen = ({ navigation }) => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    promptAsync();
-  };
-
-  const handleGoogleSignIn = async (idToken) => {
+  const handleGoogleLogin = async () => {
     try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const { idToken } = userInfo;
+      
       const userCredential = await dispatch(googleLogin(idToken)).unwrap();
       if (userCredential) {
         dispatch(registerForPushNotifications(userCredential.user.uid));
       }
     } catch (error) {
-      Alert.alert('Google Login Error', error.message);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled the login flow
+        console.log('User cancelled the login flow');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        // Operation is in progress already
+        console.log('Operation in progress');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Error', 'Play services not available');
+      } else {
+        Alert.alert('Google Login Error', error.message);
+      }
     }
   };
 

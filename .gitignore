@@ -104,7 +104,7 @@ dist/
 
 # Firebase config
 google-services.json
-GoogleService-Info.plist
+# GoogleService-Info.plist
 
 # Visual Studio Code
 .vscode/
@@ -117,8 +117,8 @@ logs
 *.log
 
 # Credentials
-credentials/Apple/*.p12
-credentials/Apple/*.mobileprovision
-credentials.json
-credentials/
+# credentials/Apple/*.p12
+# credentials/Apple/*.mobileprovision
+# credentials.json
+# credentials/
 
