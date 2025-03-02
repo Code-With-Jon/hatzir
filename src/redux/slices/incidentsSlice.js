@@ -34,68 +34,21 @@ export const fetchIncidents = createAsyncThunk(
 
 export const addIncident = createAsyncThunk(
   'incidents/addIncident',
-  async ({ title, description, location, isAnonymous, mediaFiles, userId }, { rejectWithValue }) => {
+  async (incidentData, { rejectWithValue }) => {
     try {
-      console.log('Adding incident with userId:', userId);
-      
-      const mediaUrls = [];
-      
-      if (mediaFiles && mediaFiles.length > 0) {
-        for (const file of mediaFiles) {
-          try {
-            const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
-            const storageRef = ref(storage, `incidents/${fileName}`);
-            
-            // Convert the URI to a blob
-            const response = await fetch(file.uri);
-            const blob = await response.blob();
-            
-            // Upload the blob
-            const uploadResult = await uploadBytes(storageRef, blob);
-            const downloadUrl = await getDownloadURL(uploadResult.ref);
-            
-            mediaUrls.push({
-              url: downloadUrl,
-              type: file.type, // Now includes 'video' type
-              name: fileName
-            });
-          } catch (uploadError) {
-            console.error('Error uploading file:', uploadError);
-            throw new Error(`Failed to upload media: ${uploadError.message}`);
-          }
-        }
-      }
-
-      console.log('Media URLs:', mediaUrls);
-      
-      // Prepare incident data
-      const incidentData = {
-        title,
-        description,
-        location,
-        isAnonymous,
-        reportedBy: userId,
-        createdAt: new Date().toISOString(),
-        votes: 0,
-        flags: 0,
-        status: 'pending',
-        mediaUrls
-      };
-
-      console.log('Creating incident with data:', {
-        ...incidentData,
-        userId,
-        isAnonymous
-      });
+      console.log('Adding incident to Firestore:', incidentData);
       
       // Save to Firestore
       const docRef = await addDoc(collection(db, 'incidents'), incidentData);
       console.log('Document written with ID:', docRef.id);
       
-      return {
+      const savedIncident = {
         id: docRef.id,
         ...incidentData
       };
+      console.log('Saved incident:', savedIncident);
+      
+      return savedIncident;
     } catch (error) {
       console.error('Error adding incident:', error);
       return rejectWithValue(error.message);
@@ -165,6 +118,8 @@ const incidentsSlice = createSlice({
         state.error = null;
       })
       .addCase(addIncident.fulfilled, (state, action) => {
+        console.log('Adding incident to state:', action.payload);
+        state.incidents.push(action.payload);
         state.isLoading = false;
       })
       .addCase(addIncident.rejected, (state, action) => {

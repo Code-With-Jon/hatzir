@@ -18,6 +18,7 @@ import IncidentCard from '../../components/IncidentCard';
 import * as Location from 'expo-location';
 import { useTheme } from '../../context/ThemeContext';
 import { lightTheme, darkTheme } from '../../theme/colors';
+import { FAB } from 'react-native-elements';
 
 const IncidentFeedScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -190,12 +191,21 @@ const IncidentFeedScreen = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
       />
       
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: theme.primary }]}
-        onPress={handleAddReport}
-      >
-        <Ionicons name="add" size={24} color="#fff" />
-      </TouchableOpacity>
+      <FAB
+        title="Monitor News"
+        icon={<Ionicons name="newspaper-outline" size={24} color="white" />}
+        color={theme.primary}
+        style={[styles.monitorFab]}
+        onPress={() => navigation.navigate('IncidentMonitor')}
+      />
+      
+      <FAB
+        title="Report Incident"
+        icon={<Ionicons name="warning-outline" size={24} color="white" />}
+        color={theme.primary}
+        style={[styles.reportFab]}
+        onPress={() => navigation.navigate('ReportIncident')}
+      />
     </View>
   );
 };
@@ -242,21 +252,15 @@ const styles = StyleSheet.create({
   sortButtonTextActive: {
     color: '#fff',
   },
-  fab: {
+  monitorFab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#e91e63',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    bottom: 90, // Position above the Report FAB
+    right: 20,
+  },
+  reportFab: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
   },
 });
 

@@ -171,6 +171,30 @@ const MapScreen = ({ navigation }) => {
     console.log('Current incidents:', incidents);
   }, [incidents]);
 
+  // Add logging to see what incidents are being rendered
+  useEffect(() => {
+    console.log('Rendering incidents on map:', incidents);
+    console.log('AI-generated incidents:', incidents.filter(i => i.isAIGenerated));
+  }, [incidents]);
+
+  useEffect(() => {
+    console.log('All incidents:', incidents);
+    const aiIncidents = incidents.filter(i => i.isAIGenerated);
+    console.log('AI-generated incidents:', aiIncidents);
+    console.log('Number of AI incidents:', aiIncidents.length);
+    console.log('Sample incident structure:', incidents[0]); // Show structure of first incident
+  }, [incidents]);
+
+  useEffect(() => {
+    dispatch(fetchIncidents())
+      .then((result) => {
+        console.log('Fetched incidents:', result);
+      })
+      .catch((error) => {
+        console.error('Error fetching incidents:', error);
+      });
+  }, [dispatch]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <MapView

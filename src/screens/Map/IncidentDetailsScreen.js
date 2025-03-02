@@ -24,9 +24,300 @@ import { collection, addDoc, query, where, orderBy, getDocs, serverTimestamp, on
 import { db } from '../../config/firebase';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../context/ThemeContext';
+import { lightTheme, darkTheme } from '../../theme/colors';
 
-// Create a memoized comment component
-const CommentItem = React.memo(({ item, formatTimestamp, onLike, onReply, currentUserId }) => {
+// Define styles outside both components so they can be accessed by both
+const createStyles = (theme) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  headerSection: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  description: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  mediaSection: {
+    marginVertical: 16,
+  },
+  commentsSection: {
+    flex: 1,
+  },
+  commentsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  commentContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'flex-start',
+  },
+  commentUserAvatar: {
+    marginRight: 12,
+  },
+  commentContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  commentHeader: {
+    flexDirection: 'column',
+  },
+  commentUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#262626',
+    marginBottom: 2,
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#262626',
+    lineHeight: 20,
+  },
+  commentMeta: {
+    flexDirection: 'row',
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 12,
+  },
+  commentLikes: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 12,
+  },
+  replyButton: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '600',
+  },
+  likeButton: {
+    padding: 4,
+  },
+  replyingToText: {
+    color: '#00376b',
+    fontWeight: '600',
+  },
+  emptyCommentsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 16,
+    fontWeight: '500',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  inputContainer: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    padding: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    width: '100%',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#fff',
+    paddingTop: 8,
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingRight: 48,
+    fontSize: 16,
+    color: '#333',
+    textAlignVertical: 'center',
+  },
+  submitButton: {
+    marginLeft: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+  },
+  submitButtonActive: {
+    backgroundColor: '#e91e63',
+  },
+  submitButtonInactive: {
+    backgroundColor: '#f5f5f5',
+  },
+  replyingToContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  headerContent: {
+    padding: 16,
+    backgroundColor: theme.surface,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  date: {
+    fontSize: 14,
+    color: '#666',
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    maxWidth: '40%',
+  },
+  location: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+    marginBottom: 2,
+  },
+  mediaContainer: {
+    padding: 20,
+  },
+  media: {
+    width: 200,
+    height: 200,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  descriptionContainer: {
+    padding: 20,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  actionButton: {
+    backgroundColor: theme.surface,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  voteCount: {
+    marginTop: 5,
+    color: '#4CAF50',
+  },
+  actionText: {
+    marginTop: 5,
+    color: '#666',
+  },
+  reporterContainer: {
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reporterLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginRight: 5,
+  },
+  reporterName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  separator: {
+    height: 8,
+    backgroundColor: '#f5f5f5',
+    marginVertical: 16,
+  },
+  reporterInfo: {
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  distance: {
+    fontSize: 12,
+    color: '#999',
+    marginLeft: 4,
+    fontStyle: 'italic',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  actionButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: theme.primary,
+  },
+  deleteButton: {
+    borderColor: theme.error,
+  },
+  deleteButtonText: {
+    color: theme.error,
+  },
+});
+
+// Create a memoized comment component that takes styles as a prop
+const CommentItem = React.memo(({ item, formatTimestamp, onLike, onReply, currentUserId, styles }) => {
   const isLiked = item.likes?.includes(currentUserId);
   const likeCount = item.likes?.length || 0;
 
@@ -103,17 +394,48 @@ const IncidentDetailsScreen = ({ route }) => {
 
   const navigation = useNavigation();
 
-  // Add these debug logs
-  useEffect(() => {
-    console.log('Incident:', incident);
-    console.log('Current user:', user);
-    console.log('Incident reportedBy:', incident.reportedBy);
-    console.log('User ID:', user?.uid);
-    console.log('Is match:', user?.uid === incident.reportedBy);
-  }, [incident, user]);
+  // Add theme hook near the top of the component
+  const { isDarkMode } = useTheme();
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
-  // Update the isUserIncident check
+  // Use the createStyles function to get styles based on the theme
+  const styles = createStyles(theme);
+
+  // First, define isUserIncident
   const isUserIncident = Boolean(user?.uid && incident.reportedBy && user.uid === incident.reportedBy);
+
+  // First, define the handler functions before renderHeader
+  const handleEditIncident = () => {
+    navigation.navigate('EditIncident', { incident });
+  };
+
+  const handleDeleteIncident = () => {
+    Alert.alert(
+      'Delete Incident',
+      'Are you sure you want to delete this incident? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'incidents', incident.id));
+              navigation.goBack();
+              Alert.alert('Success', 'Incident deleted successfully');
+            } catch (error) {
+              console.error('Error deleting incident:', error);
+              Alert.alert('Error', 'Failed to delete incident');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   // Get user location
   useEffect(() => {
@@ -138,19 +460,7 @@ const IncidentDetailsScreen = ({ route }) => {
     getUserLocation();
   }, []);
 
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = useMetricSystem ? 6371 : 3959; // Earth's radius in km or miles
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in km or miles
-    return distance;
-  };
-
+  // First, move the getDistanceText function before renderHeader
   const getDistanceText = () => {
     if (!userLocation || !incident.location) return null;
     
@@ -169,6 +479,20 @@ const IncidentDetailsScreen = ({ route }) => {
       }
     }
     return `${distance.toFixed(1)}${useMetricSystem ? 'km' : 'mi'} away`;
+  };
+
+  // Then define the calculateDistance function before getDistanceText
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = useMetricSystem ? 6371 : 3959; // Earth's radius in km or miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c; // Distance in km or miles
+    return distance;
   };
 
   // Update keyboard handling
@@ -402,69 +726,6 @@ const IncidentDetailsScreen = ({ route }) => {
     }, 100);
   };
 
-  const handleEditIncident = () => {
-    navigation.navigate('EditIncident', { incident });
-  };
-
-  const handleDeleteIncident = () => {
-    Alert.alert(
-      'Delete Incident',
-      'Are you sure you want to delete this incident? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, 'incidents', incident.id));
-              navigation.goBack();
-              Alert.alert('Success', 'Incident deleted successfully');
-            } catch (error) {
-              console.error('Error deleting incident:', error);
-              Alert.alert('Error', 'Failed to delete incident');
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
-  const renderHeader = React.useMemo(() => (
-    <>
-      <View style={styles.headerContent}>
-        <Text style={styles.title}>{incident.title}</Text>
-        <Text style={styles.date}>
-          {new Date(incident.createdAt).toLocaleDateString()}
-        </Text>
-        <Text style={styles.description}>{incident.description}</Text>
-      </View>
-
-      {isUserIncident && (
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleEditIncident}
-          >
-            <Ionicons name="create-outline" size={24} color="#2196F3" />
-            <Text style={styles.actionButtonText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={handleDeleteIncident}
-          >
-            <Ionicons name="trash-outline" size={24} color="#F44336" />
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </>
-  ), [incident, isUserIncident]);
-
   useEffect(() => {
     console.log('Debug user ownership:', {
       currentUserId: user?.uid,
@@ -489,10 +750,41 @@ const IncidentDetailsScreen = ({ route }) => {
         >
           {/* Incident Details Section */}
           <View style={styles.headerSection}>
-            {renderHeader}
+            <View style={styles.headerContent}>
+              <Text style={styles.title}>{incident.title}</Text>
+              <Text style={styles.date}>
+                {new Date(incident.createdAt).toLocaleDateString()}
+              </Text>
+              <Text style={styles.description}>{incident.description}</Text>
+            </View>
+
+            {isUserIncident && (
+              <View style={styles.actionButtonsContainer}>
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={handleEditIncident}
+                >
+                  <View style={styles.actionButtonInner}>
+                    <Ionicons name="create-outline" size={22} color={theme.primary} />
+                    <Text style={styles.actionButtonText}>Edit</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={handleDeleteIncident}
+                >
+                  <View style={styles.actionButtonInner}>
+                    <Ionicons name="trash-outline" size={22} color={theme.error} />
+                    <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+            
             {getDistanceText() && (
               <Text style={styles.distance}>{getDistanceText()}</Text>
             )}
+            
             <View style={styles.reporterInfo}>
               <Text style={styles.reporterLabel}>Reported by:</Text>
               <Text style={styles.reporterName}>
@@ -528,6 +820,7 @@ const IncidentDetailsScreen = ({ route }) => {
                   onLike={handleLikeComment}
                   onReply={handleReplyComment}
                   currentUserId={user?.uid}
+                  styles={styles}
                 />
               ))
             )}
@@ -592,279 +885,5 @@ const IncidentDetailsScreen = ({ route }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  headerSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  description: {
-    fontSize: 16,
-    color: '#666',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  mediaSection: {
-    marginVertical: 16,
-  },
-  commentsSection: {
-    flex: 1,
-  },
-  commentsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  commentContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    alignItems: 'flex-start',
-  },
-  commentUserAvatar: {
-    marginRight: 12,
-  },
-  commentContent: {
-    flex: 1,
-    marginRight: 8,
-  },
-  commentHeader: {
-    flexDirection: 'column',
-  },
-  commentUsername: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#262626',
-    marginBottom: 2,
-  },
-  commentText: {
-    fontSize: 14,
-    color: '#262626',
-    lineHeight: 20,
-  },
-  commentMeta: {
-    flexDirection: 'row',
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  commentTime: {
-    fontSize: 12,
-    color: '#999',
-    marginRight: 12,
-  },
-  commentLikes: {
-    fontSize: 12,
-    color: '#999',
-    marginRight: 12,
-  },
-  replyButton: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '600',
-  },
-  likeButton: {
-    padding: 4,
-  },
-  replyingToText: {
-    color: '#00376b',
-    fontWeight: '600',
-  },
-  emptyCommentsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 16,
-    fontWeight: '500',
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-  },
-  inputContainer: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    width: '100%',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#fff',
-    paddingTop: 8,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    paddingRight: 48,
-    fontSize: 16,
-    color: '#333',
-    textAlignVertical: 'center',
-  },
-  submitButton: {
-    marginLeft: 8,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-end',
-  },
-  submitButtonActive: {
-    backgroundColor: '#e91e63',
-  },
-  submitButtonInactive: {
-    backgroundColor: '#f5f5f5',
-  },
-  replyingToContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 8,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  headerContent: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  date: {
-    fontSize: 14,
-    color: '#666',
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    maxWidth: '40%',
-  },
-  location: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-    marginBottom: 2,
-  },
-  mediaContainer: {
-    padding: 20,
-  },
-  media: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-    marginRight: 10,
-  },
-  descriptionContainer: {
-    padding: 20,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  actionButton: {
-    alignItems: 'center',
-  },
-  voteCount: {
-    marginTop: 5,
-    color: '#4CAF50',
-  },
-  actionText: {
-    marginTop: 5,
-    color: '#666',
-  },
-  reporterContainer: {
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reporterLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginRight: 5,
-  },
-  reporterName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  separator: {
-    height: 8,
-    backgroundColor: '#f5f5f5',
-    marginVertical: 16,
-  },
-  reporterInfo: {
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  distance: {
-    fontSize: 12,
-    color: '#999',
-    marginLeft: 4,
-    fontStyle: 'italic',
-  },
-  actionButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 12,
-    backgroundColor: '#f8f8f8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  actionButtonText: {
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#2196F3',
-  },
-  deleteButton: {
-    backgroundColor: '#fff',
-  },
-  deleteButtonText: {
-    color: '#F44336',
-  },
-});
 
 export default IncidentDetailsScreen; 

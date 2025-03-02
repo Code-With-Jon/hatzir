@@ -28,6 +28,7 @@ import EditProfileScreen from '../screens/Profile/EditProfileScreen';
 import NotificationButton from '../screens/Map/NotificationButton';
 import SettingsScreen from '../screens/Profile/SettingsScreen';
 import EditIncidentScreen from '../screens/Reports/EditIncidentScreen';
+import IncidentMonitorScreen from '../screens/Reports/IncidentMonitorScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -78,14 +79,33 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen 
         name="ReportsTab" 
-        component={IncidentFeedScreen} 
         options={{ 
           title: 'Reports',
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={24} color={color} />
           ),
-        }} 
-      />
+        }}
+      >
+        {() => (
+          <Stack.Navigator>
+            <Stack.Screen 
+              name="IncidentFeed" 
+              component={IncidentFeedScreen}
+              options={{ title: 'Incident Reports' }} 
+            />
+            <Stack.Screen 
+              name="ReportIncident" 
+              component={ReportIncidentScreen}
+              options={{ title: 'Report Incident' }} 
+            />
+            <Stack.Screen 
+              name="IncidentMonitor" 
+              component={IncidentMonitorScreen}
+              options={{ title: 'Monitor Incidents' }} 
+            />
+          </Stack.Navigator>
+        )}
+      </Tab.Screen>
       <Tab.Screen 
         name="ProfileTab" 
         component={ProfileScreen} 
@@ -169,11 +189,6 @@ const RootNavigator = () => {
               name="IncidentDetails" 
               component={IncidentDetailsScreen} 
               options={{ headerShown: true, title: 'Incident Details' }}
-            />
-            <Stack.Screen 
-              name="ReportIncident" 
-              component={ReportIncidentScreen} 
-              options={{ headerShown: true, title: 'Report Incident' }}
             />
             <Stack.Screen 
               name="Notifications" 
