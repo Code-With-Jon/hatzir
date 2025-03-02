@@ -27,6 +27,7 @@ import PrivacyPolicyScreen from '../screens/Profile/PrivacyPolicyScreen';
 import EditProfileScreen from '../screens/Profile/EditProfileScreen';
 import NotificationButton from '../screens/Map/NotificationButton';
 import SettingsScreen from '../screens/Profile/SettingsScreen';
+import EditIncidentScreen from '../screens/Reports/EditIncidentScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -210,6 +211,14 @@ const RootNavigator = () => {
                 title: 'Settings',
                 headerShadowVisible: false,
               }} 
+            />
+            <Stack.Screen 
+              name="EditIncident" 
+              component={EditIncidentScreen}
+              options={{
+                title: 'Edit Incident',
+                headerTitleAlign: 'center',
+              }}
             />
           </>
         )}

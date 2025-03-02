@@ -36,6 +36,8 @@ export const addIncident = createAsyncThunk(
   'incidents/addIncident',
   async ({ title, description, location, isAnonymous, mediaFiles, userId }, { rejectWithValue }) => {
     try {
+      console.log('Adding incident with userId:', userId);
+      
       const mediaUrls = [];
       
       if (mediaFiles && mediaFiles.length > 0) {
@@ -70,20 +72,21 @@ export const addIncident = createAsyncThunk(
       const incidentData = {
         title,
         description,
-        location: {
-          latitude: location.latitude,
-          longitude: location.longitude
-        },
+        location,
         isAnonymous,
-        mediaUrls,
-        reportedBy: isAnonymous ? null : userId,
+        reportedBy: userId,
         createdAt: new Date().toISOString(),
         votes: 0,
         flags: 0,
-        status: 'pending'
+        status: 'pending',
+        mediaUrls
       };
 
-      console.log('Saving incident data:', incidentData);
+      console.log('Creating incident with data:', {
+        ...incidentData,
+        userId,
+        isAnonymous
+      });
       
       // Save to Firestore
       const docRef = await addDoc(collection(db, 'incidents'), incidentData);
@@ -94,8 +97,8 @@ export const addIncident = createAsyncThunk(
         ...incidentData
       };
     } catch (error) {
-      console.error('Error in addIncident:', error);
-      return rejectWithValue(error.message || 'Could not submit incident');
+      console.error('Error adding incident:', error);
+      return rejectWithValue(error.message);
     }
   }
 );

@@ -163,6 +163,14 @@ const MapScreen = ({ navigation }) => {
 
   const hasUnread = false; // Replace with actual logic to determine if there are unread notifications
 
+  const handleIncidentPress = (incident) => {
+    navigation.navigate('IncidentDetails', { incident });
+  };
+
+  useEffect(() => {
+    console.log('Current incidents:', incidents);
+  }, [incidents]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <MapView
@@ -178,35 +186,37 @@ const MapScreen = ({ navigation }) => {
         maxZoomLevel={20}
         minZoomLevel={0}
       >
-        {mapReady && incidents.map(incident => (
-          <Marker
-            key={incident.id}
-            coordinate={{
-              latitude: incident.location.latitude,
-              longitude: incident.location.longitude
-            }}
-            pinColor="#e91e63"
-            tracksViewChanges={false}
-          >
-            <Callout
-              tooltip
-              onPress={() => navigation.navigate('IncidentDetails', { incident })}
+        {mapReady && incidents.map(incident => {
+          console.log('Rendering incident:', incident);
+          return (
+            <Marker
+              key={incident.id}
+              coordinate={{
+                latitude: incident.location.latitude,
+                longitude: incident.location.longitude
+              }}
+              pinColor="#e91e63"
+              tracksViewChanges={false}
             >
-              <View style={styles.calloutContainer}>
-                <View style={styles.calloutHeader}>
-                  <Text style={[styles.calloutTitle, { color: theme.text }]}>{incident.title}</Text>
-                  <Text style={[styles.timeElapsed, { color: theme.text }]}>
-                    {getTimeElapsed(incident.createdAt)}
+              <Callout
+                tooltip
+                onPress={() => handleIncidentPress(incident)}
+              >
+                <View style={[styles.calloutContainer, { backgroundColor: isDarkMode ? theme.surface : '#fff' }]}>
+                  <Text style={[styles.calloutTitle, { color: isDarkMode ? '#fff' : '#333' }]} numberOfLines={1}>
+                    {incident?.title || 'No Title'}
+                  </Text>
+                  <Text style={[styles.calloutDescription, { color: isDarkMode ? '#ccc' : '#666' }]} numberOfLines={2}>
+                    {incident?.description || 'No Description'}
+                  </Text>
+                  <Text style={[styles.calloutDate, { color: isDarkMode ? '#999' : '#999' }]}>
+                    {incident?.createdAt ? new Date(incident.createdAt).toLocaleDateString() : 'No Date'}
                   </Text>
                 </View>
-                <Text style={[styles.calloutDescription, { color: theme.text }]} numberOfLines={2}>
-                  {incident.description}
-                </Text>
-                <Text style={[styles.calloutLink, { color: theme.text }]}>View Details</Text>
-              </View>
-            </Callout>
-          </Marker>
-        ))}
+              </Callout>
+            </Marker>
+          );
+        })}
       </MapView>
       
       <View style={[styles.header, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.9)' }]}>
@@ -302,42 +312,30 @@ const styles = StyleSheet.create({
     right: 20,
   },
   calloutContainer: {
-    width: 200,
-    padding: 15,
-    backgroundColor: 'white',
     borderRadius: 8,
+    padding: 12,
+    maxWidth: 200,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
     elevation: 5,
   },
-  calloutHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 5,
-  },
   calloutTitle: {
-    flex: 1,
     fontSize: 16,
     fontWeight: 'bold',
-    marginRight: 8,
-  },
-  timeElapsed: {
-    fontSize: 12,
-    color: '#666',
+    marginBottom: 4,
   },
   calloutDescription: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  calloutLink: {
-    fontSize: 14,
-    color: '#e91e63',
-    fontWeight: 'bold',
-    marginTop: 5,
+  calloutDate: {
+    fontSize: 12,
+    marginTop: 4,
   },
 });
 

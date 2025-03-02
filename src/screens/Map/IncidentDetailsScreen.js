@@ -20,9 +20,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { voteIncident, flagIncident } from '../../redux/slices/incidentsSlice';
 import CommentSection from '../../components/CommentSection';
 import IncidentMedia from '../../components/IncidentMedia';
-import { collection, addDoc, query, where, orderBy, getDocs, serverTimestamp, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, getDocs, serverTimestamp, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, increment, deleteDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import * as Location from 'expo-location';
+import { useNavigation } from '@react-navigation/native';
 
 // Create a memoized comment component
 const CommentItem = React.memo(({ item, formatTimestamp, onLike, onReply, currentUserId }) => {
@@ -76,7 +77,7 @@ const CommentItem = React.memo(({ item, formatTimestamp, onLike, onReply, curren
   );
 });
 
-const IncidentDetailsScreen = ({ route, navigation }) => {
+const IncidentDetailsScreen = ({ route }) => {
   const { incident } = route.params;
   const dispatch = useDispatch();
   const user = useSelector(state => state.auth.user);
@@ -99,6 +100,20 @@ const IncidentDetailsScreen = ({ route, navigation }) => {
   const [isInputFocused, setIsInputFocused] = useState(false);
 
   const windowHeight = Dimensions.get('window').height;
+
+  const navigation = useNavigation();
+
+  // Add these debug logs
+  useEffect(() => {
+    console.log('Incident:', incident);
+    console.log('Current user:', user);
+    console.log('Incident reportedBy:', incident.reportedBy);
+    console.log('User ID:', user?.uid);
+    console.log('Is match:', user?.uid === incident.reportedBy);
+  }, [incident, user]);
+
+  // Update the isUserIncident check
+  const isUserIncident = Boolean(user?.uid && incident.reportedBy && user.uid === incident.reportedBy);
 
   // Get user location
   useEffect(() => {
@@ -387,82 +402,77 @@ const IncidentDetailsScreen = ({ route, navigation }) => {
     }, 100);
   };
 
+  const handleEditIncident = () => {
+    navigation.navigate('EditIncident', { incident });
+  };
+
+  const handleDeleteIncident = () => {
+    Alert.alert(
+      'Delete Incident',
+      'Are you sure you want to delete this incident? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'incidents', incident.id));
+              navigation.goBack();
+              Alert.alert('Success', 'Incident deleted successfully');
+            } catch (error) {
+              console.error('Error deleting incident:', error);
+              Alert.alert('Error', 'Failed to delete incident');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const renderHeader = React.useMemo(() => (
     <>
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{incident.title}</Text>
-          <Text style={styles.date}>
-            {new Date(incident.createdAt).toLocaleDateString()}
-          </Text>
-        </View>
-        <View style={styles.locationContainer}>
-          <Ionicons name="location" size={16} color="#666" />
-          <View>
-            <Text style={styles.location}>
-              {incident.locationDetails?.city && incident.locationDetails?.state 
-                ? `${incident.locationDetails.city}, ${incident.locationDetails.state}`
-                : 'Location unknown'
-              }
-            </Text>
-            {userLocation && (
-              <Text style={styles.distance}>
-                {getDistanceText()}
-              </Text>
-            )}
-          </View>
-        </View>
-      </View>
-
-      {incident.mediaUrls?.length > 0 && (
-        <View style={styles.mediaContainer}>
-          <IncidentMedia mediaUrls={incident.mediaUrls} />
-        </View>
-      )}
-
-      <View style={styles.descriptionContainer}>
+      <View style={styles.headerContent}>
+        <Text style={styles.title}>{incident.title}</Text>
+        <Text style={styles.date}>
+          {new Date(incident.createdAt).toLocaleDateString()}
+        </Text>
         <Text style={styles.description}>{incident.description}</Text>
       </View>
 
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => handleVote(currentVotes + 1)}
-        >
-          <Ionicons name="arrow-up-circle" size={24} color="#4CAF50" />
-          <Text style={styles.voteCount}>{currentVotes}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={handleShare}
-        >
-          <Ionicons name="share-outline" size={24} color="#2196F3" />
-          <Text style={styles.actionText}>Share</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={handleFlag}
-        >
-          <Ionicons name="flag-outline" size={24} color="#F44336" />
-          <Text style={styles.actionText}>Flag</Text>
-        </TouchableOpacity>
-      </View>
-
-      {!incident.isAnonymous && (
-        <View style={styles.reporterContainer}>
-          <Text style={styles.reporterLabel}>Reported by:</Text>
-          <Text style={styles.reporterName}>
-            {incident.reportedBy === user?.uid ? 'You' : 'Anonymous'}
-          </Text>
+      {isUserIncident && (
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleEditIncident}
+          >
+            <Ionicons name="create-outline" size={24} color="#2196F3" />
+            <Text style={styles.actionButtonText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={handleDeleteIncident}
+          >
+            <Ionicons name="trash-outline" size={24} color="#F44336" />
+            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
+          </TouchableOpacity>
         </View>
       )}
-
-      <View style={styles.separator} />
-      <Text style={styles.commentsTitle}>Comments</Text>
     </>
-  ), [incident, currentVotes, user?.uid, userLocation]);
+  ), [incident, isUserIncident]);
+
+  useEffect(() => {
+    console.log('Debug user ownership:', {
+      currentUserId: user?.uid,
+      incidentReporterId: incident.reportedBy,
+      isMatch: user?.uid === incident.reportedBy,
+      isUserIncident
+    });
+  }, [user, incident, isUserIncident]);
 
   return (
     <View style={styles.container}>
@@ -479,8 +489,7 @@ const IncidentDetailsScreen = ({ route, navigation }) => {
         >
           {/* Incident Details Section */}
           <View style={styles.headerSection}>
-            <Text style={styles.title}>{incident.title}</Text>
-            <Text style={styles.description}>{incident.description}</Text>
+            {renderHeader}
             {getDistanceText() && (
               <Text style={styles.distance}>{getDistanceText()}</Text>
             )}
@@ -751,17 +760,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
-  header: {
-    padding: 20,
+  headerContent: {
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  titleContainer: {
-    flex: 1,
-    marginRight: 16,
   },
   date: {
     fontSize: 14,
@@ -842,6 +844,26 @@ const styles = StyleSheet.create({
     color: '#999',
     marginLeft: 4,
     fontStyle: 'italic',
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 12,
+    backgroundColor: '#f8f8f8',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  actionButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#2196F3',
+  },
+  deleteButton: {
+    backgroundColor: '#fff',
+  },
+  deleteButtonText: {
+    color: '#F44336',
   },
 });
 
