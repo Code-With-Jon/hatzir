@@ -12,7 +12,8 @@ import {
   TextInput,
   Keyboard,
   Platform,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  Dimensions
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,48 +27,51 @@ import * as Location from 'expo-location';
 // Create a memoized comment component
 const CommentItem = React.memo(({ item, formatTimestamp, onLike, onReply, currentUserId }) => {
   const isLiked = item.likes?.includes(currentUserId);
+  const likeCount = item.likes?.length || 0;
 
   return (
     <View style={styles.commentContainer}>
-      <View style={styles.commentHeader}>
-        <Text style={styles.commentUser}>{item.userEmail.split('@')[0]}</Text>
-        <Text style={styles.commentTime}>{formatTimestamp(item.createdAt)}</Text>
+      <View style={styles.commentUserAvatar}>
+        <Ionicons name="person-circle" size={36} color="#999" />
       </View>
       <View style={styles.commentContent}>
-        <View style={styles.commentTextContainer}>
-          {item.replyTo && (
-            <Text style={styles.replyingTo}>
-              Replying to @{item.replyToUser.split('@')[0]}
+        <View style={styles.commentHeader}>
+          <Text style={styles.commentUsername}>
+            {item.userEmail.split('@')[0]}
+          </Text>
+          <Text style={styles.commentText}>
+            {item.replyTo && (
+              <Text style={styles.replyingToText}>
+                @{item.replyToUser.split('@')[0]}{' '}
+              </Text>
+            )}
+            {item.text}
+          </Text>
+        </View>
+        <View style={styles.commentMeta}>
+          <Text style={styles.commentTime}>
+            {formatTimestamp(item.createdAt)}
+          </Text>
+          {likeCount > 0 && (
+            <Text style={styles.commentLikes}>
+              {likeCount} {likeCount === 1 ? 'like' : 'likes'}
             </Text>
           )}
-          <Text style={styles.commentText}>{item.text}</Text>
-        </View>
-        <View style={styles.commentActions}>
-          <TouchableOpacity 
-            style={styles.likeButton} 
-            onPress={() => onLike(item.id, isLiked)}
-          >
-            <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
-              size={20}
-              color={isLiked ? "#e91e63" : "#666"}
-            />
-            {item.likes?.length > 0 && (
-              <Text style={styles.likeCount}>{item.likes.length}</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.replyButton} 
-            onPress={() => onReply(item)}
-          >
-            <Ionicons
-              name="return-down-back-outline"
-              size={20}
-              color="#666"
-            />
+          <TouchableOpacity onPress={() => onReply(item)}>
+            <Text style={styles.replyButton}>Reply</Text>
           </TouchableOpacity>
         </View>
       </View>
+      <TouchableOpacity 
+        style={styles.likeButton} 
+        onPress={() => onLike(item.id, isLiked)}
+      >
+        <Ionicons
+          name={isLiked ? "heart" : "heart-outline"}
+          size={20}
+          color={isLiked ? "#e91e63" : "#999"}
+        />
+      </TouchableOpacity>
     </View>
   );
 });
@@ -85,9 +89,16 @@ const IncidentDetailsScreen = ({ route, navigation }) => {
   const [comments, setComments] = useState([]);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // Add input ref
   const inputRef = useRef(null);
+  const scrollViewRef = useRef(null);
+
+  // Add this state to track input focus
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  const windowHeight = Dimensions.get('window').height;
 
   // Get user location
   useEffect(() => {
@@ -145,19 +156,27 @@ const IncidentDetailsScreen = ({ route, navigation }) => {
     return `${distance.toFixed(1)}${useMetricSystem ? 'km' : 'mi'} away`;
   };
 
+  // Update keyboard handling
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      () => setKeyboardVisible(true)
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardVisible(true);
+        setKeyboardHeight(e.endCoordinates.height);
+      }
     );
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => setKeyboardVisible(false)
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
     );
 
     return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
     };
   }, []);
 
@@ -352,13 +371,20 @@ const IncidentDetailsScreen = ({ route, navigation }) => {
     }
   };
 
+  const scrollToBottom = () => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
   const handleReplyComment = (comment) => {
     setReplyingTo(comment);
     setNewComment(`@${comment.userEmail.split('@')[0]} `);
-    // Focus the input field
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    setIsInputFocused(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+      scrollToBottom();
+    }, 100);
   };
 
   const renderHeader = React.useMemo(() => (
@@ -439,81 +465,122 @@ const IncidentDetailsScreen = ({ route, navigation }) => {
   ), [incident, currentVotes, user?.uid, userLocation]);
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 34 : 0}
-    >
-      <FlatList
-        style={styles.mainContent}
-        ListHeaderComponent={renderHeader}
-        ListHeaderComponentStyle={styles.headerSection}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        data={comments}
-        initialNumToRender={4}
-        maxToRenderPerBatch={4}
-        windowSize={5}
-        scrollEnabled={true}
-        showsVerticalScrollIndicator={true}
-        renderItem={({ item }) => (
-          <CommentItem 
-            item={item} 
-            formatTimestamp={formatTimestamp}
-            onLike={handleLikeComment}
-            onReply={handleReplyComment}
-            currentUserId={user.uid}
-          />
-        )}
-        keyExtractor={item => item.id}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No comments yet</Text>
-        }
-      />
-      <View style={[
-        styles.inputContainer,
-        keyboardVisible && styles.inputContainerWithKeyboard
-      ]}>
-        {replyingTo && (
-          <View style={styles.replyingToContainer}>
-            <Text style={styles.replyingToText}>
-              Replying to @{replyingTo.userEmail.split('@')[0]}
+    <View style={styles.container}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : null}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          ref={scrollViewRef}
+        >
+          {/* Incident Details Section */}
+          <View style={styles.headerSection}>
+            <Text style={styles.title}>{incident.title}</Text>
+            <Text style={styles.description}>{incident.description}</Text>
+            {getDistanceText() && (
+              <Text style={styles.distance}>{getDistanceText()}</Text>
+            )}
+            <View style={styles.reporterInfo}>
+              <Text style={styles.reporterLabel}>Reported by:</Text>
+              <Text style={styles.reporterName}>
+                {incident.isAnonymous ? 'Anonymous' : incident.reportedBy}
+              </Text>
+            </View>
+          </View>
+
+          {/* Media Section */}
+          {incident.mediaUrls?.length > 0 && (
+            <View style={styles.mediaSection}>
+              <IncidentMedia mediaUrls={incident.mediaUrls} />
+            </View>
+          )}
+
+          {/* Comments Section */}
+          <View style={styles.commentsSection}>
+            <Text style={styles.commentsTitle}>
+              Comments {comments.length > 0 && `(${comments.length})`}
             </Text>
-            <TouchableOpacity onPress={cancelReply}>
-              <Ionicons name="close-circle" size={20} color="#666" />
+            {comments.length === 0 ? (
+              <View style={styles.emptyCommentsContainer}>
+                <Ionicons name="chatbubble-outline" size={48} color="#ccc" />
+                <Text style={styles.emptyText}>No comments yet</Text>
+                <Text style={styles.emptySubtext}>Be the first to comment</Text>
+              </View>
+            ) : (
+              comments.map((comment) => (
+                <CommentItem
+                  key={comment.id}
+                  item={comment}
+                  formatTimestamp={formatTimestamp}
+                  onLike={handleLikeComment}
+                  onReply={handleReplyComment}
+                  currentUserId={user?.uid}
+                />
+              ))
+            )}
+          </View>
+        </ScrollView>
+
+        <View style={[
+          styles.inputContainer,
+          keyboardVisible && { marginBottom: Platform.OS === 'ios' ? 0 : keyboardHeight }
+        ]}>
+          {replyingTo && (
+            <View style={styles.replyingToContainer}>
+              <Text style={styles.replyingToText}>
+                Replying to @{replyingTo.userEmail.split('@')[0]}
+              </Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setReplyingTo(null);
+                  setNewComment('');
+                }}
+              >
+                <Ionicons name="close-circle" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={styles.inputWrapper}>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={newComment}
+              onChangeText={setNewComment}
+              placeholder="Add a comment..."
+              multiline
+              maxLength={500}
+              onFocus={() => {
+                setIsInputFocused(true);
+                setKeyboardVisible(true);
+              }}
+              onBlur={() => {
+                setIsInputFocused(false);
+              }}
+              autoCapitalize="sentences"
+              returnKeyType="default"
+            />
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                newComment.trim() ? styles.submitButtonActive : styles.submitButtonInactive
+              ]}
+              onPress={handleSubmitComment}
+              disabled={!newComment.trim()}
+            >
+              <Ionicons
+                name="send"
+                size={24}
+                color={newComment.trim() ? "#fff" : "#999"}
+              />
             </TouchableOpacity>
           </View>
-        )}
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          placeholder="Add a comment..."
-          value={newComment}
-          onChangeText={setNewComment}
-          multiline
-          maxLength={1000}
-          autoCapitalize="sentences"
-          returnKeyType="send"
-          enablesReturnKeyAutomatically
-          blurOnSubmit={false}
-          onSubmitEditing={handleSubmitComment}
-        />
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            newComment.trim() ? styles.submitButtonActive : styles.submitButtonInactive
-          ]}
-          onPress={handleSubmitComment}
-          disabled={!newComment.trim()}
-        >
-          <Ionicons
-            name="send"
-            size={24}
-            color={newComment.trim() ? "#fff" : "#999"}
-          />
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -522,8 +589,167 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  mainContent: {
+  keyboardAvoidingView: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  headerSection: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  description: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  mediaSection: {
+    marginVertical: 16,
+  },
+  commentsSection: {
+    flex: 1,
+  },
+  commentsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  commentContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'flex-start',
+  },
+  commentUserAvatar: {
+    marginRight: 12,
+  },
+  commentContent: {
+    flex: 1,
+    marginRight: 8,
+  },
+  commentHeader: {
+    flexDirection: 'column',
+  },
+  commentUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#262626',
+    marginBottom: 2,
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#262626',
+    lineHeight: 20,
+  },
+  commentMeta: {
+    flexDirection: 'row',
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 12,
+  },
+  commentLikes: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 12,
+  },
+  replyButton: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '600',
+  },
+  likeButton: {
+    padding: 4,
+  },
+  replyingToText: {
+    color: '#00376b',
+    fontWeight: '600',
+  },
+  emptyCommentsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 16,
+    fontWeight: '500',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  inputContainer: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    padding: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    width: '100%',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#fff',
+    paddingTop: 8,
+  },
+  input: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingRight: 48,
+    fontSize: 16,
+    color: '#333',
+    textAlignVertical: 'center',
+  },
+  submitButton: {
+    marginLeft: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+  },
+  submitButtonActive: {
+    backgroundColor: '#e91e63',
+  },
+  submitButtonInactive: {
+    backgroundColor: '#f5f5f5',
+  },
+  replyingToContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 8,
   },
   header: {
     padding: 20,
@@ -536,12 +762,6 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
     marginRight: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
   },
   date: {
     fontSize: 14,
@@ -573,11 +793,6 @@ const styles = StyleSheet.create({
   },
   descriptionContainer: {
     padding: 20,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#333',
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -617,137 +832,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     marginVertical: 16,
   },
-  commentsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+  reporterInfo: {
     padding: 20,
-  },
-  headerSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  commentContainer: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
-    minHeight: 80, // Set a consistent height for comment containers
-  },
-  commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
-  },
-  commentUser: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  commentTime: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 10,
-  },
-  commentContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  commentTextContainer: {
-    flex: 1,
-  },
-  commentText: {
-    fontSize: 16,
-    color: '#333',
-    marginTop: 4,
-    flex: 1,
-    marginRight: 8,
-  },
-  commentActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  likeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 4,
-  },
-  likeCount: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  replyingTo: {
-    fontSize: 12,
-    color: '#e91e63',
-    marginBottom: 4,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    padding: 20,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  inputContainerWithKeyboard: {
-    paddingBottom: 16,
-  },
-  input: {
-    flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    marginRight: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
-    fontSize: 16,
-  },
-  submitButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitButtonActive: {
-    backgroundColor: '#e91e63',
-  },
-  submitButtonInactive: {
-    backgroundColor: '#f5f5f5',
-  },
-  replyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 4,
-    marginLeft: 8,
-  },
-  replyingToContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 8,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  replyingToText: {
-    fontSize: 12,
-    color: '#666',
-    marginRight: 8,
   },
   distance: {
     fontSize: 12,
